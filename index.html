@@ -1,0 +1,1261 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Health Concierge</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --accent:#39FF14;--accent-dim:rgba(57,255,20,0.12);--accent-glow:rgba(57,255,20,0.35);
+  --bg:#080808;--surface:#111;--card:#161616;
+  --border:rgba(255,255,255,0.08);--border-accent:rgba(57,255,20,0.3);
+  --text:#f0f0f0;--muted:#777;--danger:#FF4444;--warn:#FFB800;--info:#3B82F6;
+}
+html{background:var(--bg);}
+body{font-family:'Space Grotesk',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden;}
+body::before{content:'';position:fixed;inset:0;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");pointer-events:none;z-index:0;opacity:0.4;}
+body::after{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(57,255,20,0.025) 1px,transparent 1px),linear-gradient(90deg,rgba(57,255,20,0.025) 1px,transparent 1px);background-size:40px 40px;pointer-events:none;z-index:0;}
+.app{position:relative;z-index:1;max-width:1100px;margin:0 auto;padding:0 24px 80px;}
+header{padding:28px 0 24px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);margin-bottom:24px;}
+.logo{display:flex;align-items:center;gap:12px;}
+.logo-icon{width:36px;height:36px;border-radius:9px;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;color:#000;font-family:'JetBrains Mono',monospace;}
+.logo-text{font-size:17px;font-weight:600;letter-spacing:-0.02em;}
+.logo-sub{font-size:10px;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;font-family:'JetBrains Mono',monospace;}
+.header-status{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--muted);font-family:'JetBrains Mono',monospace;}
+.pulse-dot{width:7px;height:7px;border-radius:50%;background:var(--accent);animation:pulse 2s infinite;}
+@keyframes pulse{0%,100%{opacity:1;box-shadow:0 0 0 0 var(--accent-glow);}50%{opacity:.7;box-shadow:0 0 0 5px transparent;}}
+.tabs{display:flex;gap:3px;margin-bottom:20px;background:var(--surface);padding:4px;border-radius:12px;border:1px solid var(--border);flex-wrap:wrap;}
+.tab{flex:1;min-width:80px;padding:8px 8px;border-radius:9px;font-size:11.5px;font-weight:500;cursor:pointer;color:var(--muted);transition:all .2s;text-align:center;border:none;background:transparent;font-family:'Space Grotesk',sans-serif;}
+.tab:hover{color:var(--text);}
+.tab.active{background:var(--accent);color:#000;font-weight:600;}
+.panel{display:none;animation:fadeIn .2s ease;}
+.panel.active{display:block;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:none;}}
+.card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:18px 20px;margin-bottom:14px;}
+.card-title{font-size:10px;font-weight:500;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;font-family:'JetBrains Mono',monospace;margin-bottom:14px;}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;}
+.metric{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px;text-align:center;}
+.metric-label{font-size:10px;color:var(--muted);margin-bottom:5px;font-family:'JetBrains Mono',monospace;letter-spacing:.05em;}
+.metric-value{font-size:24px;font-weight:700;line-height:1;letter-spacing:-0.03em;}
+.metric-unit{font-size:11px;color:var(--muted);margin-top:3px;}
+.slider-row{margin-bottom:16px;}
+.slider-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:7px;}
+.slider-label{font-size:13px;color:var(--muted);}
+.slider-val{font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:500;color:var(--accent);}
+input[type=range]{width:100%;-webkit-appearance:none;appearance:none;height:3px;border-radius:2px;background:var(--border);outline:none;cursor:pointer;}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:17px;height:17px;border-radius:50%;background:var(--accent);cursor:pointer;box-shadow:0 0 10px var(--accent-glow);transition:transform .15s;}
+input[type=range]::-webkit-slider-thumb:hover{transform:scale(1.2);}
+.ai-box{background:var(--surface);border:1px solid var(--border-accent);border-left:3px solid var(--accent);border-radius:12px;padding:14px 16px;font-size:13px;line-height:1.7;margin-bottom:14px;position:relative;}
+.ai-badge{position:absolute;top:-1px;right:14px;background:var(--accent);color:#000;font-size:9px;font-weight:700;padding:2px 8px;border-radius:0 0 6px 6px;font-family:'JetBrains Mono',monospace;letter-spacing:.06em;}
+.recovery-ring{width:84px;height:84px;margin:0 auto 6px;position:relative;display:flex;align-items:center;justify-content:center;}
+.recovery-ring svg{position:absolute;inset:0;transform:rotate(-90deg);}
+.recovery-ring-value{font-size:20px;font-weight:700;font-family:'JetBrains Mono',monospace;}
+.badge{display:inline-flex;align-items:center;gap:3px;padding:3px 9px;border-radius:6px;font-size:10px;font-weight:600;font-family:'JetBrains Mono',monospace;}
+.badge-green{background:rgba(57,255,20,0.12);color:var(--accent);}
+.badge-yellow{background:rgba(255,184,0,0.12);color:var(--warn);}
+.badge-red{background:rgba(255,68,68,0.12);color:var(--danger);}
+.badge-blue{background:rgba(59,130,246,0.12);color:var(--info);}
+.stat-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px;}
+.stat-row:last-child{border-bottom:none;}
+.stat-row span:first-child{color:var(--muted);}
+.stat-row span:last-child{font-weight:500;font-family:'JetBrains Mono',monospace;}
+.week-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:7px;margin-bottom:14px;}
+.day-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:9px 6px;cursor:pointer;transition:all .2s;text-align:center;}
+.day-card:hover,.day-card.active{border-color:var(--accent);box-shadow:0 0 10px var(--accent-glow);}
+.day-name{font-size:10px;color:var(--muted);margin-bottom:3px;font-family:'JetBrains Mono',monospace;}
+.day-type{font-size:10px;font-weight:600;margin-bottom:5px;line-height:1.3;}
+.workout-table{width:100%;border-collapse:collapse;}
+.workout-table tr{border-bottom:1px solid var(--border);}
+.workout-table tr:last-child{border-bottom:none;}
+.workout-table td{padding:9px 7px;font-size:13px;}
+.workout-table td:first-child{font-weight:500;}
+.workout-table td:nth-child(2){color:var(--muted);font-size:11px;font-family:'JetBrains Mono',monospace;}
+.workout-table td:last-child{text-align:right;font-family:'JetBrains Mono',monospace;color:var(--accent);font-weight:500;}
+.macro-bar{height:10px;border-radius:5px;overflow:hidden;display:flex;margin:10px 0;}
+.macro-bar div{transition:width .4s cubic-bezier(.4,0,.2,1);}
+.form-group{display:flex;flex-direction:column;gap:4px;}
+.form-group label{font-size:10px;color:var(--muted);font-family:'JetBrains Mono',monospace;letter-spacing:.05em;}
+.form-group input,.form-group select{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:8px 11px;color:var(--text);font-size:13px;font-family:'Space Grotesk',sans-serif;outline:none;transition:border-color .2s;width:100%;}
+.form-group input:focus,.form-group select:focus{border-color:var(--accent);}
+.form-group select option{background:var(--surface);}
+.meal-row{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border);font-size:13px;}
+.meal-row:last-child{border-bottom:none;}
+.meal-time{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);min-width:40px;}
+.meal-name{flex:1;font-weight:500;}
+.meal-macros{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--accent);text-align:right;}
+.cta-btn{width:100%;padding:12px;background:transparent;border:1px solid var(--border-accent);border-radius:10px;color:var(--accent);font-size:13px;font-weight:600;cursor:pointer;transition:all .2s;font-family:'Space Grotesk',sans-serif;}
+.cta-btn:hover{background:var(--accent-dim);border-color:var(--accent);}
+.goal-selector{display:flex;gap:10px;margin-bottom:0;}
+.goal-btn{flex:1;padding:12px 8px;border-radius:12px;border:1px solid var(--border);background:var(--surface);color:var(--muted);font-family:'Space Grotesk',sans-serif;font-size:12px;font-weight:600;cursor:pointer;transition:all .2s;text-align:center;}
+.goal-btn:hover{color:var(--text);}
+.goal-btn.active-bulk{border-color:#39FF14;background:rgba(57,255,20,0.1);color:#39FF14;}
+.goal-btn.active-maintain{border-color:#3B82F6;background:rgba(59,130,246,0.1);color:#3B82F6;}
+.goal-btn.active-cut{border-color:#FF4444;background:rgba(255,68,68,0.1);color:#FF4444;}
+.goal-icon{font-size:18px;display:block;margin-bottom:4px;}
+.goal-label{display:block;font-size:10px;color:var(--muted);margin-top:2px;font-weight:400;}
+.log-exercise-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px 18px;margin-bottom:12px;}
+.log-ex-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px;}
+.log-input{background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:6px 8px;color:var(--text);font-size:13px;font-family:'JetBrains Mono',monospace;outline:none;width:100%;text-align:center;transition:border-color .2s;}
+.log-input:focus{border-color:var(--accent);}
+.log-col-label{font-size:9px;color:var(--muted);text-align:center;font-family:'JetBrains Mono',monospace;letter-spacing:.05em;}
+.log-set-num{font-size:11px;color:var(--muted);font-family:'JetBrains Mono',monospace;text-align:center;}
+.del-btn{background:none;border:none;color:var(--muted);cursor:pointer;font-size:13px;transition:color .2s;padding:4px;line-height:1;}
+.del-btn:hover{color:var(--danger);}
+.add-set-btn{background:var(--surface);border:1px dashed var(--border);border-radius:7px;padding:6px;color:var(--muted);font-size:12px;cursor:pointer;width:100%;transition:all .2s;font-family:'Space Grotesk',sans-serif;margin-top:4px;}
+.add-set-btn:hover{border-color:var(--accent);color:var(--accent);}
+.week-summary-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px;}
+.summary-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px;text-align:center;}
+.summary-val{font-size:20px;font-weight:700;font-family:'JetBrains Mono',monospace;}
+.summary-label{font-size:10px;color:var(--muted);margin-top:3px;}
+.log-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
+.log-nav-btn{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:6px 14px;color:var(--muted);font-size:12px;cursor:pointer;transition:all .2s;font-family:'Space Grotesk',sans-serif;}
+.log-nav-btn:hover{border-color:var(--accent);color:var(--accent);}
+.log-date-lbl{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--text);}
+.progress-bar-wrap{display:flex;align-items:center;gap:10px;margin-bottom:7px;font-size:11px;}
+.progress-bar-bg{flex:1;height:5px;background:var(--border);border-radius:3px;overflow:hidden;}
+.progress-bar-fill{height:100%;border-radius:3px;transition:width .5s;}
+.vitd-result-bar{height:16px;border-radius:8px;background:var(--border);overflow:hidden;margin:10px 0;position:relative;}
+.vitd-result-fill{height:100%;border-radius:8px;transition:width .5s,background .5s;}
+.vitd-markers{display:flex;justify-content:space-between;font-size:9px;color:var(--muted);font-family:'JetBrains Mono',monospace;margin-top:3px;}
+/* MODAL */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:100;align-items:center;justify-content:center;padding:24px;backdrop-filter:blur(4px);}
+.modal-overlay.show{display:flex;}
+.modal{background:var(--card);border:1px solid var(--border-accent);border-radius:18px;padding:24px;max-width:420px;width:100%;animation:modalIn .25s ease;}
+@keyframes modalIn{from{opacity:0;transform:scale(.94);}to{opacity:1;transform:none;}}
+.modal-title{font-size:15px;font-weight:600;margin-bottom:6px;}
+.modal-sub{font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:18px;}
+.modal-actions{display:flex;gap:10px;}
+.modal-btn{flex:1;padding:11px;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;font-family:'Space Grotesk',sans-serif;border:1px solid var(--border);transition:all .2s;}
+.modal-btn-yes{background:var(--accent);color:#000;border-color:var(--accent);}
+.modal-btn-yes:hover{opacity:.85;}
+.modal-btn-no{background:transparent;color:var(--muted);}
+.modal-btn-no:hover{color:var(--text);border-color:var(--text);}
+/* BODY MAP */
+.bodymap-wrap{display:flex;gap:20px;flex-wrap:wrap;align-items:flex-start;}
+.bodymap-svg{flex:0 0 200px;}
+.bodypart{cursor:pointer;transition:all .2s;}
+.bodypart:hover{filter:brightness(1.4);}
+.bodypart.pain-mild{fill:var(--warn)!important;}
+.bodypart.pain-severe{fill:var(--danger)!important;}
+.injury-info{flex:1;min-width:240px;}
+.deload-banner{background:linear-gradient(90deg,rgba(255,184,0,0.15),rgba(255,184,0,0.05));border:1px solid rgba(255,184,0,0.4);border-radius:12px;padding:14px 16px;margin-bottom:14px;display:flex;align-items:center;gap:12px;}
+.deload-banner.urgent{background:linear-gradient(90deg,rgba(255,68,68,0.15),rgba(255,68,68,0.05));border-color:rgba(255,68,68,0.4);}
+.deload-icon{font-size:22px;}
+.toggle-row{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);}
+.toggle-row:last-child{border-bottom:none;}
+.import-zone{border:2px dashed var(--border);border-radius:12px;padding:24px;text-align:center;cursor:pointer;transition:all .2s;}
+.import-zone:hover{border-color:var(--accent);background:var(--accent-dim);}
+.maesure-graph-bar{display:flex;align-items:flex-end;gap:3px;height:50px;margin-top:6px;}
+@media(max-width:700px){
+  .grid4{grid-template-columns:repeat(2,1fr);}
+  .week-grid{grid-template-columns:repeat(4,1fr);}
+  .grid2{grid-template-columns:1fr;}
+  .goal-selector{flex-wrap:wrap;}
+  header{flex-direction:column;gap:14px;align-items:flex-start;}
+}
+</style>
+</head>
+<body>
+<div class="app">
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">AI</div>
+    <div>
+      <div class="logo-text">Health Concierge</div>
+      <div class="logo-sub">KI-gesteuert · Muskelaufbau · Apple Watch</div>
+    </div>
+  </div>
+  <div class="header-status"><div class="pulse-dot"></div><span>KI aktiv · Daten gespeichert</span></div>
+</header>
+
+<div class="tabs">
+  <button class="tab active" onclick="switchTab('today',this)">Heute</button>
+  <button class="tab" onclick="switchTab('nutrition',this)">Ernährung</button>
+  <button class="tab" onclick="switchTab('week',this)">Wochenplan</button>
+  <button class="tab" onclick="switchTab('injury',this)">Schmerz-Check</button>
+  <button class="tab" onclick="switchTab('log',this)">Log &amp; Bilanz</button>
+  <button class="tab" onclick="switchTab('body',this)">Körper &amp; KFA</button>
+  <button class="tab" onclick="switchTab('profile',this)">Profil</button>
+</div>
+
+<!-- HEUTE -->
+<div id="today" class="panel active">
+  <div id="deload-banner-slot"></div>
+  <div class="card">
+    <div class="card-title">Ziel wählen — beeinflusst Kalorien, Makros &amp; KI-Empfehlung</div>
+    <div class="goal-selector">
+      <button class="goal-btn active-bulk" id="goal-bulk" onclick="setGoal('bulk')">
+        <span class="goal-icon">📈</span>Bulk<span class="goal-label">+300 kcal Überschuss</span>
+      </button>
+      <button class="goal-btn" id="goal-maintain" onclick="setGoal('maintain')">
+        <span class="goal-icon">⚖️</span>Maintain<span class="goal-label">TDEE Erhalt</span>
+      </button>
+      <button class="goal-btn" id="goal-cut" onclick="setGoal('cut')">
+        <span class="goal-icon">🔥</span>Cut<span class="goal-label">−400 kcal Defizit</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="grid2" style="margin-bottom:14px;">
+    <div class="card">
+      <div class="card-title">Tagesstatus — Apple Watch Daten</div>
+      <div class="slider-row">
+        <div class="slider-header"><span class="slider-label">🌙 Schlafqualität</span><span class="slider-val" id="sleep-val">7/10</span></div>
+        <input type="range" min="1" max="10" value="7" id="sleep" oninput="updateAll()">
+      </div>
+      <div class="slider-row">
+        <div class="slider-header"><span class="slider-label">💓 HRV-Score</span><span class="slider-val" id="hrv-val">55 ms</span></div>
+        <input type="range" min="20" max="100" value="55" id="hrv" oninput="updateAll()">
+      </div>
+      <div class="slider-row">
+        <div class="slider-header"><span class="slider-label">❤️ Ruhepuls</span><span class="slider-val" id="rhr-val">58 bpm</span></div>
+        <input type="range" min="40" max="90" value="58" id="rhr" oninput="updateAll()">
+      </div>
+      <div class="slider-row">
+        <div class="slider-header"><span class="slider-label">👟 Schritte heute</span><span class="slider-val" id="steps-val">8.000</span></div>
+        <input type="range" min="0" max="25000" step="500" value="8000" id="steps" oninput="updateAll()">
+      </div>
+      <div class="slider-row" style="margin-bottom:0;">
+        <div class="slider-header"><span class="slider-label">⚡ Stresslevel</span><span class="slider-val" id="stress-val">4/10</span></div>
+        <input type="range" min="1" max="10" value="4" id="stress" oninput="updateAll()">
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:12px;">
+      <div class="card" style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;">
+        <div class="card-title" style="margin-bottom:10px;">Recovery Score</div>
+        <div class="recovery-ring">
+          <svg viewBox="0 0 84 84"><circle cx="42" cy="42" r="35" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="6"/><circle cx="42" cy="42" r="35" fill="none" stroke="#39FF14" stroke-width="6" stroke-linecap="round" stroke-dasharray="220" stroke-dashoffset="55" id="recovery-circle"/></svg>
+          <div class="recovery-ring-value" id="recovery-score" style="color:var(--accent)">72</div>
+        </div>
+        <div class="metric-unit">von 100</div>
+        <div style="margin-top:8px;" id="recovery-badge"><span class="badge badge-green">Optimal</span></div>
+      </div>
+      <div class="card" style="text-align:center;padding:14px;">
+        <div class="card-title" style="margin-bottom:6px;">Heutiges Training</div>
+        <div style="font-size:14px;font-weight:600;" id="training-today">Hypertrophie</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:3px;" id="training-sub">Schwere Session</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="ai-box"><div class="ai-badge">KI ANALYSE</div><div id="ai-recommendation">Berechne...</div></div>
+
+  <div class="grid4">
+    <div class="metric"><div class="metric-label">TDEE</div><div class="metric-value" id="tdee-val" style="font-size:20px;">2180</div><div class="metric-unit">kcal Erhalt</div></div>
+    <div class="metric"><div class="metric-label">Ziel</div><div class="metric-value" id="goal-kcal-val" style="font-size:20px;color:var(--accent);">2480</div><div class="metric-unit" id="goal-kcal-label">kcal Bulk</div></div>
+    <div class="metric"><div class="metric-label">Protein</div><div class="metric-value" id="protein-val" style="font-size:20px;">168</div><div class="metric-unit">g / Tag</div></div>
+    <div class="metric"><div class="metric-label">Gesundheit</div><div class="metric-value" id="health-val" style="font-size:20px;">Gut</div><div class="metric-unit" id="health-sub">stabil</div></div>
+  </div>
+</div>
+
+<!-- ERNÄHRUNG -->
+<div id="nutrition" class="panel">
+  <div class="card">
+    <div class="card-title">Makro-Verteilung (zielangepasst)</div>
+    <div class="macro-bar" id="macro-bar"><div style="width:33%;background:#3B82F6;"></div><div style="width:42%;background:#F59E0B;"></div><div style="width:25%;background:#EC4899;"></div></div>
+    <div style="display:flex;gap:14px;font-size:11px;margin-bottom:14px;font-family:'JetBrains Mono',monospace;"><span style="color:#3B82F6;">■ Protein</span><span style="color:#F59E0B;">■ Kohlenhydrate</span><span style="color:#EC4899;">■ Fett</span></div>
+    <div id="macro-details"></div>
+  </div>
+  <div class="grid2">
+    <div class="card"><div class="card-title">Mahlzeiten-Timing</div><div id="meal-timing"></div></div>
+    <div class="card"><div class="card-title">Kalorienaufschlüsselung</div><div id="calorie-breakdown"></div></div>
+  </div>
+  <div class="card">
+    <div class="card-title">Vitamin D₃ Rechner — Personalisierte Dosierung</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+      <div class="form-group"><label>HAUTTYP</label>
+        <select id="vd-skin" onchange="calcVitD()">
+          <option value="1">Sehr hell (Typ I–II)</option>
+          <option value="2" selected>Mittel (Typ III–IV)</option>
+          <option value="3">Dunkel (Typ V–VI)</option>
+        </select>
+      </div>
+      <div class="form-group"><label>SONNENSTUNDEN / TAG (Ø)</label>
+        <select id="vd-sun" onchange="calcVitD()">
+          <option value="0">Kein Sonnenlicht</option>
+          <option value="15">~15 Min (kurz)</option>
+          <option value="30" selected>~30 Min</option>
+          <option value="60">~1 Stunde</option>
+          <option value="120">2+ Stunden</option>
+        </select>
+      </div>
+      <div class="form-group"><label>JAHRESZEIT / STANDORT</label>
+        <select id="vd-season" onchange="calcVitD()">
+          <option value="0.1">Winter in DE (Nov–Feb)</option>
+          <option value="0.4">Frühling/Herbst DE</option>
+          <option value="0.8" selected>Sommer DE</option>
+          <option value="1.0">Südeuropa / Äquator</option>
+        </select>
+      </div>
+      <div class="form-group"><label>AKTUELLER BLUTWERT 25-OH-D (ng/mL) — 0=unbekannt</label>
+        <input type="number" id="vd-level" value="0" min="0" max="100" oninput="calcVitD()">
+      </div>
+    </div>
+    <div id="vitd-result"></div>
+  </div>
+  <div class="card"><div class="card-title">Supplement-Stack</div><div id="supps"></div></div>
+</div>
+
+<!-- WOCHENPLAN -->
+<div id="week" class="panel">
+  <div class="ai-box" style="margin-bottom:14px;"><div class="ai-badge">KI WOCHENPLAN</div><div id="week-status">Berechne...</div></div>
+  <div class="week-grid" id="week-grid"></div>
+  <div class="card" id="selected-workout"><div class="card-title">Tag auswählen</div><p style="font-size:13px;color:var(--muted);">Klicke auf einen Tag oben.</p></div>
+</div>
+
+<!-- SCHMERZ-CHECK -->
+<div id="injury" class="panel">
+  <div class="ai-box" style="margin-bottom:14px;"><div class="ai-badge">VERLETZUNGS-BYPASS</div>
+    <div>Klicke auf eine Körperstelle, wenn du dort Schmerzen oder Wehwehchen hast. Die KI passt dein Training an, ohne den schmerzenden Bereich zu belasten — du entscheidest, ob du die Anpassung übernimmst.</div>
+  </div>
+  <div class="card">
+    <div class="card-title">Body-Map — wo zwickt es?</div>
+    <div class="bodymap-wrap">
+      <div class="bodymap-svg">
+        <svg viewBox="0 0 160 320" xmlns="http://www.w3.org/2000/svg">
+          <ellipse cx="80" cy="28" rx="20" ry="24" fill="#222" stroke="#333" class="bodypart" data-part="kopf" onclick="togglePain('kopf')"/>
+          <rect x="70" y="50" width="20" height="18" fill="#222" stroke="#333" class="bodypart" data-part="nacken" onclick="togglePain('nacken')"/>
+          <circle cx="52" cy="78" r="15" fill="#222" stroke="#333" class="bodypart" data-part="schulter_l" onclick="togglePain('schulter_l')"/>
+          <circle cx="108" cy="78" r="15" fill="#222" stroke="#333" class="bodypart" data-part="schulter_r" onclick="togglePain('schulter_r')"/>
+          <rect x="62" y="68" width="36" height="60" rx="8" fill="#222" stroke="#333" class="bodypart" data-part="brust" onclick="togglePain('brust')"/>
+          <rect x="62" y="128" width="36" height="42" rx="6" fill="#222" stroke="#333" class="bodypart" data-part="ruecken" onclick="togglePain('ruecken')"/>
+          <rect x="62" y="170" width="36" height="36" rx="6" fill="#222" stroke="#333" class="bodypart" data-part="unterer_ruecken" onclick="togglePain('unterer_ruecken')"/>
+          <rect x="38" y="92" width="14" height="56" rx="7" fill="#222" stroke="#333" class="bodypart" data-part="arm_l" onclick="togglePain('arm_l')"/>
+          <rect x="108" y="92" width="14" height="56" rx="7" fill="#222" stroke="#333" class="bodypart" data-part="arm_r" onclick="togglePain('arm_r')"/>
+          <circle cx="45" cy="156" r="9" fill="#222" stroke="#333" class="bodypart" data-part="ellbogen_l" onclick="togglePain('ellbogen_l')"/>
+          <circle cx="115" cy="156" r="9" fill="#222" stroke="#333" class="bodypart" data-part="ellbogen_r" onclick="togglePain('ellbogen_r')"/>
+          <rect x="63" y="206" width="16" height="62" rx="8" fill="#222" stroke="#333" class="bodypart" data-part="bein_l" onclick="togglePain('bein_l')"/>
+          <rect x="81" y="206" width="16" height="62" rx="8" fill="#222" stroke="#333" class="bodypart" data-part="bein_r" onclick="togglePain('bein_r')"/>
+          <circle cx="71" cy="274" r="9" fill="#222" stroke="#333" class="bodypart" data-part="knie_l" onclick="togglePain('knie_l')"/>
+          <circle cx="89" cy="274" r="9" fill="#222" stroke="#333" class="bodypart" data-part="knie_r" onclick="togglePain('knie_r')"/>
+        </svg>
+        <div style="font-size:10px;color:var(--muted);margin-top:8px;text-align:center;font-family:'JetBrains Mono',monospace;">1× Klick = leicht · 2× = stark · 3× = weg</div>
+      </div>
+      <div class="injury-info" id="injury-info">
+        <p style="font-size:13px;color:var(--muted);">Keine Beschwerden gemeldet. Dein Training läuft wie geplant. 💪</p>
+      </div>
+    </div>
+  </div>
+  <div class="card" id="injury-adjustment" style="display:none;">
+    <div class="card-title">KI-Trainingsanpassung</div>
+    <div id="injury-adjust-content"></div>
+  </div>
+</div>
+
+<!-- LOG & BILANZ -->
+<div id="log" class="panel">
+  <div class="log-nav">
+    <button class="log-nav-btn" onclick="changeLogDate(-1)">◀ Vorheriger Tag</button>
+    <span class="log-date-lbl" id="log-date-label">Heute</span>
+    <button class="log-nav-btn" onclick="changeLogDate(1)">Nächster Tag ▶</button>
+  </div>
+  <div class="card">
+    <div class="card-title">Wochenbilanz (letzte 7 Tage)</div>
+    <div class="week-summary-grid">
+      <div class="summary-card"><div class="summary-val" id="wb-sessions" style="color:var(--accent);">0</div><div class="summary-label">Sessions</div></div>
+      <div class="summary-card"><div class="summary-val" id="wb-volume" style="color:var(--info);">0t</div><div class="summary-label">Gesamt-Volumen</div></div>
+      <div class="summary-card"><div class="summary-val" id="wb-pr" style="color:var(--warn);">0</div><div class="summary-label">Neue PRs</div></div>
+    </div>
+    <div id="wb-progress-bars"></div>
+  </div>
+  <div class="card">
+    <div class="card-title">Kalorien- &amp; Trainings-Wochenfeedback</div>
+    <div class="ai-box" style="margin-bottom:0;"><div class="ai-badge">KI WOCHENREVIEW</div><div id="week-feedback">Sammle Daten der Woche...</div></div>
+  </div>
+  <div class="card">
+    <div class="card-title">Kraftwerte — Übungen heute</div>
+    <div id="exercise-log-list"></div>
+    <button class="add-set-btn" onclick="addExercise()" style="margin-top:10px;border-radius:10px;padding:10px;font-size:13px;">+ Übung hinzufügen</button>
+  </div>
+  <div class="card">
+    <div class="card-title">KI Feedback &amp; Steigerungsempfehlung (heute)</div>
+    <div class="ai-box" style="margin-bottom:0;"><div class="ai-badge">KI FEEDBACK</div><div id="log-ai-feedback">Trage deine Werte ein...</div></div>
+  </div>
+  <div class="card">
+    <div class="card-title">Kraftentwicklung — Letzte 2 Wochen</div>
+    <div id="strength-history"></div>
+  </div>
+</div>
+
+<!-- KÖRPER & KFA -->
+<div id="body" class="panel">
+  <div class="card">
+    <div class="card-title">Körperfettanteil — Navy-Methode</div>
+    <p style="font-size:12px;color:var(--muted);margin-bottom:14px;">Größe, Alter und Geschlecht werden aus deinem Profil übernommen. Miss mit einem Maßband an der engsten/breitesten Stelle.</p>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;" id="navy-inputs">
+      <div class="form-group"><label>HALSUMFANG (CM)</label><input type="number" id="m-neck" value="38" step="0.5" oninput="calcNavy()"></div>
+      <div class="form-group"><label>BAUCHUMFANG / NABEL (CM)</label><input type="number" id="m-waist" value="84" step="0.5" oninput="calcNavy()"></div>
+      <div class="form-group" id="hip-group" style="display:none;"><label>HÜFTUMFANG (CM)</label><input type="number" id="m-hip" value="95" step="0.5" oninput="calcNavy()"></div>
+    </div>
+    <div id="navy-result"></div>
+  </div>
+  <div class="card">
+    <div class="card-title">Weitere Körpermaße (für Verlaufs-Graph)</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;">
+      <div class="form-group"><label>BRUST (CM)</label><input type="number" id="m-chest" value="100" step="0.5"></div>
+      <div class="form-group"><label>OBERARM (CM)</label><input type="number" id="m-arm" value="38" step="0.5"></div>
+      <div class="form-group"><label>OBERSCHENKEL (CM)</label><input type="number" id="m-thigh" value="58" step="0.5"></div>
+    </div>
+    <button class="cta-btn" style="margin-top:14px;" onclick="saveMeasurement()">📏 Heutige Maße speichern</button>
+  </div>
+  <div class="card">
+    <div class="card-title">Körpermaße-Verlauf</div>
+    <div id="measure-history"></div>
+  </div>
+</div>
+
+<!-- PROFIL -->
+<div id="profile" class="panel">
+  <div class="card">
+    <div class="card-title">Körperprofil</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+      <div class="form-group"><label>GEWICHT (KG)</label><input type="number" id="p-weight" value="80" oninput="updateAll()"></div>
+      <div class="form-group"><label>GRÖSSE (CM)</label><input type="number" id="p-height" value="178" oninput="updateAll()"></div>
+      <div class="form-group"><label>ALTER</label><input type="number" id="p-age" value="25" oninput="updateAll()"></div>
+      <div class="form-group"><label>GESCHLECHT</label>
+        <select id="p-gender" onchange="updateAll()"><option value="m">Männlich</option><option value="f">Weiblich</option></select>
+      </div>
+    </div>
+  </div>
+  <div class="card"><div class="card-title">Grundumsatz (Mifflin-St. Jeor)</div><div id="rmr-breakdown"></div></div>
+  <div class="card">
+    <div class="card-title">Deload-Zyklus</div>
+    <div id="deload-status"></div>
+    <button class="cta-btn" style="margin-top:12px;" onclick="resetDeloadCycle()">🔄 Neuen Trainingszyklus starten (Deload abgeschlossen)</button>
+  </div>
+  <div class="card">
+    <div class="card-title">Einstellungen</div>
+    <div class="toggle-row">
+      <span style="font-size:13px;">KI fragt vor Plan-Änderungen</span>
+      <label style="position:relative;display:inline-block;width:42px;height:24px;">
+        <input type="checkbox" id="ask-before-change" checked style="opacity:0;width:0;height:0;" onchange="saveAll()">
+        <span style="position:absolute;cursor:pointer;inset:0;background:var(--accent);border-radius:24px;transition:.2s;"></span>
+      </label>
+    </div>
+    <div class="toggle-row" style="border-bottom:none;">
+      <span style="font-size:13px;color:var(--muted);">Alle gespeicherten Daten löschen</span>
+      <button class="log-nav-btn" style="color:var(--danger);border-color:rgba(255,68,68,0.3);" onclick="wipeAll()">Reset</button>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">Apple Watch Daten importieren</div>
+    <p style="font-size:12px;color:var(--muted);line-height:1.6;margin-bottom:12px;">
+      Exportiere mit der App <strong style="color:var(--text);">"Health Auto Export"</strong> (App Store, ~3€) deine Apple Health Daten als CSV oder JSON. Lade die Datei hier hoch — HRV, Ruhepuls, Schlaf und Schritte werden automatisch übernommen.
+    </p>
+    <div class="import-zone" onclick="document.getElementById('health-file').click()">
+      <div style="font-size:28px;margin-bottom:8px;">⌚</div>
+      <div style="font-size:13px;font-weight:600;">Health-Datei hochladen</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:4px;">CSV oder JSON · oder hier klicken</div>
+    </div>
+    <input type="file" id="health-file" accept=".csv,.json" style="display:none;" onchange="importHealthFile(event)">
+    <div id="import-status" style="margin-top:10px;font-size:12px;"></div>
+  </div>
+  <button class="cta-btn" onclick="alert('In der finalen App: Verbindet mit Claude API für personalisierten 4-Wochen Plan!')">↗ Detaillierten 4-Wochen Hypertrophie-Plan generieren</button>
+</div>
+
+
+</div>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modal-overlay">
+  <div class="modal">
+    <div class="modal-title" id="modal-title">KI-Empfehlung</div>
+    <div class="modal-sub" id="modal-sub">...</div>
+    <div class="modal-actions">
+      <button class="modal-btn modal-btn-no" id="modal-no" onclick="closeModal()">Ablehnen</button>
+      <button class="modal-btn modal-btn-yes" id="modal-yes">Akzeptieren</button>
+    </div>
+  </div>
+</div>
+
+<script>// ════════ STATE ════════
+let currentGoal='bulk';
+let logDateOffset=0;
+let painMap={}; // {part: 0|1|2}
+let modalCallback=null;
+
+let logData=JSON.parse(localStorage.getItem('hc_log')||'{}');
+let prData=JSON.parse(localStorage.getItem('hc_pr')||'{}');
+let measureData=JSON.parse(localStorage.getItem('hc_measure')||'[]');
+let appState=JSON.parse(localStorage.getItem('hc_state')||'{}');
+
+const defaultExercises=['Bankdrücken','Kniebeuge','Klimmzüge'];
+
+const workoutPlans={
+  heavy_push:{label:'Brust + Trizeps',short:'Push',ex:[['Bankdrücken','Hauptübung','4×6–8'],['Schrägbank KH','Upper Chest','3×8–10'],['Dips (Gewichtet)','Compound','3×8'],['Cable Flyes','Isolation','3×12'],['Trizeps PD','Finisher','3×12']]},
+  heavy_pull:{label:'Rücken + Bizeps',short:'Pull',ex:[['Klimmzüge','Rücken','4×6–8'],['Kabelrudern','Mid-Back','3×10'],['Lat Pulldown','Lats','3×10'],['Face Pulls','Rear Delt','3×15'],['Bizeps Curl','Isolation','3×12']]},
+  legs:{label:'Beine (Leg Day)',short:'Legs',ex:[['Kniebeuge','Compound','4×6–8'],['Leg Press','Quad','3×10'],['Romanian DL','Hamstrings','3×10'],['Leg Curl','Isolation','3×12'],['Waden','Finisher','4×15']]},
+  shoulders:{label:'Schultern + Core',short:'Shoulders',ex:[['Schulterdrücken','Hauptübung','4×8–10'],['Seitheben','Laterals','4×15'],['Arnold Press','Full Delt','3×10'],['Reverse Pec','Rear Delt','3×15'],['Plank','Core','3×45s']]},
+  recovery:{label:'Aktive Erholung',short:'Erhol.',ex:[['Foam Rolling','Myofaszial','10 Min'],['Dehnen','Mobilität','15 Min'],['Spaziergang','NEAT','30 Min']]},
+  rest:{label:'Ruhetag',short:'Rest',ex:[['Komplett Pause','Regeneration','—']]},
+};
+const daysFull=['Montag','Dienstag','Mittwoch','Donnerstag','Freitag','Samstag','Sonntag'];
+const daysShort=['Mo','Di','Mi','Do','Fr','Sa','So'];
+
+// Body part -> affected exercises + alternatives
+const injuryMap={
+  schulter_l:{name:'Linke Schulter',avoid:['Bankdrücken','Schulterdrücken','Arnold Press','Dips (Gewichtet)'],alt:'Seitheben am Kabel (leicht), Face Pulls, oder reine Bein-Einheit'},
+  schulter_r:{name:'Rechte Schulter',avoid:['Bankdrücken','Schulterdrücken','Arnold Press','Dips (Gewichtet)'],alt:'Seitheben am Kabel (leicht), Face Pulls, oder reine Bein-Einheit'},
+  unterer_ruecken:{name:'Unterer Rücken',avoid:['Kniebeuge','Romanian DL','Kabelrudern'],alt:'Leg Press, Leg Curl, Beinmaschinen — kein axiale Belastung'},
+  ruecken:{name:'Oberer Rücken',avoid:['Klimmzüge','Kabelrudern','Lat Pulldown'],alt:'Brust- und Bein-Fokus, leichte Face Pulls'},
+  knie_l:{name:'Linkes Knie',avoid:['Kniebeuge','Leg Press','Waden'],alt:'Romanian DL, Leg Curl (Hamstrings), Oberkörper-Training'},
+  knie_r:{name:'Rechtes Knie',avoid:['Kniebeuge','Leg Press','Waden'],alt:'Romanian DL, Leg Curl (Hamstrings), Oberkörper-Training'},
+  ellbogen_l:{name:'Linker Ellbogen',avoid:['Bizeps Curl','Trizeps PD','Dips (Gewichtet)'],alt:'Compound-Übungen mit neutralem Griff, Bein-Tag'},
+  ellbogen_r:{name:'Rechter Ellbogen',avoid:['Bizeps Curl','Trizeps PD','Dips (Gewichtet)'],alt:'Compound-Übungen mit neutralem Griff, Bein-Tag'},
+  brust:{name:'Brustmuskel',avoid:['Bankdrücken','Schrägbank KH','Cable Flyes','Dips (Gewichtet)'],alt:'Rücken- und Bein-Training, vorsichtige Schulterarbeit'},
+  arm_l:{name:'Linker Arm',avoid:['Bizeps Curl','Trizeps PD'],alt:'Bein-Fokus, Core-Training'},
+  arm_r:{name:'Rechter Arm',avoid:['Bizeps Curl','Trizeps PD'],alt:'Bein-Fokus, Core-Training'},
+  bein_l:{name:'Linkes Bein',avoid:['Kniebeuge','Leg Press','Romanian DL','Leg Curl','Waden'],alt:'Kompletter Oberkörper-Tag (Push oder Pull)'},
+  bein_r:{name:'Rechtes Bein',avoid:['Kniebeuge','Leg Press','Romanian DL','Leg Curl','Waden'],alt:'Kompletter Oberkörper-Tag (Push oder Pull)'},
+  nacken:{name:'Nacken',avoid:['Schulterdrücken','Klimmzüge','Seitheben'],alt:'Bein-Tag, leichte Brust-Isolation'},
+  kopf:{name:'Kopf / Kreislauf',avoid:['Kniebeuge','Bankdrücken','Schulterdrücken','Klimmzüge'],alt:'Pausentag empfohlen — leichtes Spazieren, Mobilität'},
+};
+
+// ════════ PERSISTENCE ════════
+function saveLog(){localStorage.setItem('hc_log',JSON.stringify(logData));localStorage.setItem('hc_pr',JSON.stringify(prData));}
+function saveMeasureData(){localStorage.setItem('hc_measure',JSON.stringify(measureData));}
+function saveAll(){
+  appState={
+    goal:currentGoal,
+    sleep:val('sleep'),hrv:val('hrv'),rhr:val('rhr'),steps:val('steps'),stress:val('stress'),
+    weight:val('p-weight'),height:val('p-height'),age:val('p-age'),gender:val('p-gender'),
+    vd_skin:val('vd-skin'),vd_sun:val('vd-sun'),vd_season:val('vd-season'),vd_level:val('vd-level'),
+    m_neck:val('m-neck'),m_waist:val('m-waist'),m_hip:val('m-hip'),
+    m_chest:val('m-chest'),m_arm:val('m-arm'),m_thigh:val('m-thigh'),
+    askBeforeChange:document.getElementById('ask-before-change').checked,
+    painMap:painMap,
+    deloadStart:appState.deloadStart||Date.now(),
+  };
+  localStorage.setItem('hc_state',JSON.stringify(appState));
+}
+function val(id){const e=document.getElementById(id);return e?e.value:'';}
+function setVal(id,v){const e=document.getElementById(id);if(e&&v!==undefined&&v!=='')e.value=v;}
+
+function loadState(){
+  if(!appState||Object.keys(appState).length===0){appState={deloadStart:Date.now()};localStorage.setItem('hc_state',JSON.stringify(appState));return;}
+  currentGoal=appState.goal||'bulk';
+  ['sleep','hrv','rhr','steps','stress'].forEach(k=>setVal(k,appState[k]));
+  setVal('p-weight',appState.weight);setVal('p-height',appState.height);setVal('p-age',appState.age);setVal('p-gender',appState.gender);
+  ['vd-skin','vd-sun','vd-season','vd-level'].forEach(k=>setVal(k,appState[k.replace('-','_')]));
+  setVal('m-neck',appState.m_neck);setVal('m-waist',appState.m_waist);setVal('m-hip',appState.m_hip);
+  setVal('m-chest',appState.m_chest);setVal('m-arm',appState.m_arm);setVal('m-thigh',appState.m_thigh);
+  if(appState.askBeforeChange===false)document.getElementById('ask-before-change').checked=false;
+  painMap=appState.painMap||{};
+  ['bulk','maintain','cut'].forEach(x=>{document.getElementById('goal-'+x).className='goal-btn'+(x===currentGoal?' active-'+x:'');});
+}
+
+// ════════ TABS ════════
+function switchTab(id,el){
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  el.classList.add('active');
+  if(id==='log'){renderLog();}
+  if(id==='injury'){renderInjury();}
+  if(id==='body'){calcNavy();renderMeasureHistory();}
+  if(id==='profile'){renderDeloadStatus();}
+}
+
+// ════════ GOAL ════════
+function setGoal(g){
+  currentGoal=g;
+  ['bulk','maintain','cut'].forEach(x=>{document.getElementById('goal-'+x).className='goal-btn'+(x===g?' active-'+x:'');});
+  updateAll();
+}
+
+// ════════ MODAL ════════
+function showModal(title,sub,onYes){
+  document.getElementById('modal-title').textContent=title;
+  document.getElementById('modal-sub').innerHTML=sub;
+  document.getElementById('modal-overlay').classList.add('show');
+  document.getElementById('modal-yes').onclick=function(){closeModal();if(onYes)onYes();};
+}
+function closeModal(){document.getElementById('modal-overlay').classList.remove('show');}
+
+// ════════ HELPERS ════════
+function getProfile(){return{weight:parseFloat(val('p-weight'))||80,height:parseFloat(val('p-height'))||178,age:parseFloat(val('p-age'))||25,gender:val('p-gender')||'m'};}
+function calcRMR(p){return p.gender==='m'?Math.round(10*p.weight+6.25*p.height-5*p.age+5):Math.round(10*p.weight+6.25*p.height-5*p.age-161);}
+function getStatus(){return{sleep:parseInt(val('sleep'))||7,hrv:parseInt(val('hrv'))||55,rhr:parseInt(val('rhr'))||58,steps:parseInt(val('steps'))||8000,stress:parseInt(val('stress'))||4};}
+function calcRecovery(s){let r=0;r+=(s.sleep/10)*32;r+=((s.hrv-20)/80)*32;r+=Math.max(0,(10-s.stress)/10)*18;r+=Math.min(1,s.steps/10000)*8;r+=Math.max(0,(90-s.rhr)/50)*10;return Math.round(r);}
+function getWeekPlan(r){if(r>=75)return['heavy_push','heavy_pull','rest','legs','shoulders','rest','heavy_pull'];if(r>=50)return['heavy_pull','shoulders','rest','heavy_push','recovery','rest','legs'];return['recovery','rest','heavy_pull','recovery','rest','shoulders','rest'];}
+function getGoalKcal(tdee){return currentGoal==='bulk'?tdee+300:currentGoal==='cut'?tdee-400:tdee;}
+function getGoalColor(){return currentGoal==='bulk'?'#39FF14':currentGoal==='cut'?'#FF4444':'#3B82F6';}
+function getGoalLabel(){return currentGoal==='bulk'?'kcal Bulk':currentGoal==='cut'?'kcal Cut':'kcal Erhalt';}
+
+// ════════ MAIN UPDATE ════════
+function updateAll(){
+  const s=getStatus(),p=getProfile();
+  document.getElementById('sleep-val').textContent=s.sleep+'/10';
+  document.getElementById('hrv-val').textContent=s.hrv+' ms';
+  document.getElementById('rhr-val').textContent=s.rhr+' bpm';
+  document.getElementById('steps-val').textContent=s.steps.toLocaleString('de-DE');
+  document.getElementById('stress-val').textContent=s.stress+'/10';
+
+  const recovery=calcRecovery(s);
+  const rmr=calcRMR(p);
+  const neat=Math.round(s.steps*0.038);
+  const isTraining=recovery>=50;
+  const tea=isTraining?Math.round(p.weight*0.5*60*0.1):80;
+  const tef=Math.round((rmr+neat+tea)*0.1);
+  const tdee=rmr+neat+tea+tef;
+  const goalKcal=getGoalKcal(tdee);
+  const protPerKg=currentGoal==='cut'?2.3:2.1;
+  const protein=Math.round(p.weight*protPerKg);
+  const fat=Math.round(p.weight*(currentGoal==='cut'?0.8:0.9));
+  const carbs=Math.max(0,Math.round((goalKcal-protein*4-fat*9)/4));
+
+  const circ=220,offset=circ-(circ*recovery/100);
+  const rc=document.getElementById('recovery-circle');
+  rc.setAttribute('stroke-dashoffset',Math.round(offset));
+  const rColor=recovery>=75?'#39FF14':recovery>=50?'#FFB800':'#FF4444';
+  rc.setAttribute('stroke',rColor);
+  document.getElementById('recovery-score').textContent=recovery;
+  document.getElementById('recovery-score').style.color=rColor;
+  document.getElementById('recovery-badge').innerHTML=recovery>=75?'<span class="badge badge-green">Optimal</span>':recovery>=50?'<span class="badge badge-yellow">Moderat</span>':'<span class="badge badge-red">Kritisch</span>';
+
+  document.getElementById('training-today').textContent=recovery>=75?'Hypertrophie':recovery>=50?'Moderate Session':'Aktive Erholung';
+  document.getElementById('training-sub').textContent=recovery>=75?'Schwere Session — Push it':recovery>=50?'80% Intensität':'Kein schweres Training';
+
+  // Health status from RHR + HRV
+  let healthTxt,healthSub,healthColor;
+  if(s.rhr<=60&&s.hrv>=50){healthTxt='Sehr gut';healthSub='Top Erholung';healthColor='#39FF14';}
+  else if(s.rhr<=70&&s.hrv>=40){healthTxt='Gut';healthSub='stabil';healthColor='#39FF14';}
+  else if(s.rhr<=78){healthTxt='Mäßig';healthSub='leicht belastet';healthColor='#FFB800';}
+  else{healthTxt='Achtung';healthSub='Puls erhöht';healthColor='#FF4444';}
+  document.getElementById('health-val').textContent=healthTxt;
+  document.getElementById('health-val').style.color=healthColor;
+  document.getElementById('health-sub').textContent=healthSub;
+
+  document.getElementById('tdee-val').textContent=tdee.toLocaleString('de-DE');
+  const gv=document.getElementById('goal-kcal-val');
+  gv.textContent=goalKcal.toLocaleString('de-DE');
+  gv.style.color=getGoalColor();
+  document.getElementById('goal-kcal-label').textContent=getGoalLabel();
+  document.getElementById('protein-val').textContent=protein;
+
+  const goalTxt=currentGoal==='bulk'?'Lean Bulk (+300 kcal)':currentGoal==='cut'?'Cut (−400 kcal)':'Maintenance';
+  let aiMsg='';
+  if(recovery>=75) aiMsg=`<strong>Recovery ${recovery}/100 — Maximale Trainingsbereitschaft.</strong> HRV ${s.hrv} ms, Ruhepuls ${s.rhr} bpm und Schlaf ${s.sleep}/10 bestätigen volle Regeneration. Ziel: <strong style="color:${getGoalColor()}">${goalTxt}</strong> → <strong>${goalKcal.toLocaleString('de-DE')} kcal</strong>. Push die Gewichte.`;
+  else if(recovery>=50) aiMsg=`<strong>Recovery ${recovery}/100 — Moderate Regeneration.</strong> HRV ${s.hrv} ms leicht reduziert. Session auf 80% Intensität. Ziel: <strong style="color:${getGoalColor()}">${goalTxt}</strong> → <strong>${goalKcal.toLocaleString('de-DE')} kcal</strong>.`;
+  else aiMsg=`<strong>Recovery ${recovery}/100 — Kritisch.</strong> Schweres Training schadet heute. Aktive Erholung empfohlen. Kalorien auf <strong>${tdee.toLocaleString('de-DE')} kcal</strong> (Erhalt) gesetzt.`;
+  document.getElementById('ai-recommendation').innerHTML=aiMsg;
+
+  const protPct=Math.round(protein*4/goalKcal*100);
+  const carbPct=Math.round(carbs*4/goalKcal*100);
+  const fatPct=Math.max(0,100-protPct-carbPct);
+  document.getElementById('macro-bar').innerHTML=`<div style="width:${protPct}%;background:#3B82F6;"></div><div style="width:${carbPct}%;background:#F59E0B;"></div><div style="width:${fatPct}%;background:#EC4899;"></div>`;
+  document.getElementById('macro-details').innerHTML=`
+    <div class="stat-row"><span>Protein</span><span>${protein}g · ${protein*4} kcal · ${protPct}%</span></div>
+    <div class="stat-row"><span>Kohlenhydrate</span><span>${carbs}g · ${carbs*4} kcal · ${carbPct}%</span></div>
+    <div class="stat-row"><span>Fett</span><span>${fat}g · ${fat*9} kcal · ${fatPct}%</span></div>
+    <div class="stat-row"><span style="font-weight:600;color:var(--text);">Gesamt</span><span style="color:${getGoalColor()};">${goalKcal.toLocaleString('de-DE')} kcal</span></div>`;
+
+  const pre=isTraining;
+  const meals=[
+    {time:'07:00',name:'Frühstück',kcal:Math.round(goalKcal*.25),prot:Math.round(protein*.25)},
+    {time:'10:30',name:'Snack',kcal:Math.round(goalKcal*.10),prot:Math.round(protein*.10)},
+    {time:'13:00',name:'Mittagessen',kcal:Math.round(goalKcal*.28),prot:Math.round(protein*.28)},
+    ...(pre?[{time:'Pre★',name:'Pre-Workout Snack',kcal:Math.round(goalKcal*.08),prot:Math.round(protein*.05),accent:true}]:[]),
+    ...(pre?[{time:'Post★',name:'Post-Workout Shake',kcal:Math.round(protein*.25*4),prot:Math.round(protein*.25),accent:true}]:[]),
+    {time:'19:00',name:'Abendessen',kcal:Math.round(goalKcal*.29),prot:Math.round(protein*.32)},
+  ];
+  document.getElementById('meal-timing').innerHTML=meals.map(m=>`<div class="meal-row"><span class="meal-time" style="${m.accent?'color:var(--accent)':''}">${m.time}</span><span class="meal-name" style="${m.accent?'color:var(--accent)':''}">${m.name}</span><span class="meal-macros">${m.kcal} kcal · ${m.prot}g P</span></div>`).join('');
+
+  document.getElementById('calorie-breakdown').innerHTML=`
+    <div class="stat-row"><span>Grundumsatz (RMR)</span><span>${rmr}</span></div>
+    <div class="stat-row"><span>Alltagsbewegung (NEAT)</span><span>+${neat}</span></div>
+    <div class="stat-row"><span>Training (TEA)</span><span>+${tea}</span></div>
+    <div class="stat-row"><span>Verdauung (TEF 10%)</span><span>+${tef}</span></div>
+    <div class="stat-row"><span>TDEE Erhalt</span><span>${tdee}</span></div>
+    <div class="stat-row"><span style="font-weight:600;color:var(--text);">Ziel (${currentGoal})</span><span style="color:${getGoalColor()};">${goalKcal}</span></div>`;
+
+  document.getElementById('supps').innerHTML=`
+    <div class="stat-row"><span>Kreatin Monohydrat</span><span>5g täglich</span></div>
+    <div class="stat-row"><span>Omega-3 (EPA/DHA)</span><span>2–3g täglich</span></div>
+    <div class="stat-row"><span>Magnesium Glycinat</span><span>400mg abends</span></div>
+    <div class="stat-row"><span>Protein Shake</span><span>${Math.round(protein*.25)}g Post-Workout</span></div>`;
+
+  renderWeekPlan(recovery);
+
+  document.getElementById('rmr-breakdown').innerHTML=`
+    <div class="stat-row"><span>Formel</span><span>Mifflin-St. Jeor</span></div>
+    <div class="stat-row"><span>${p.weight}kg × 10</span><span>${p.weight*10}</span></div>
+    <div class="stat-row"><span>${p.height}cm × 6.25</span><span>+${Math.round(p.height*6.25)}</span></div>
+    <div class="stat-row"><span>${p.age}J × 5</span><span>−${p.age*5}</span></div>
+    <div class="stat-row"><span>Geschlecht</span><span>${p.gender==='m'?'+5':'-161'}</span></div>
+    <div class="stat-row"><span style="font-weight:600;color:var(--text);">Grundumsatz</span><span style="color:var(--accent);">${rmr} kcal</span></div>`;
+
+  calcVitD();
+  renderDeloadBanner();
+  if(document.getElementById('hip-group')){
+    document.getElementById('hip-group').style.display=p.gender==='f'?'flex':'none';
+  }
+  saveAll();
+}
+
+// ════════ WEEK PLAN with ask-before-change ════════
+let weekPlanState=null;
+function renderWeekPlan(recovery){
+  const newPlan=getWeekPlan(recovery);
+  const ask=document.getElementById('ask-before-change').checked;
+  if(weekPlanState===null){weekPlanState=newPlan;}
+  else if(JSON.stringify(weekPlanState)!==JSON.stringify(newPlan)){
+    if(ask){
+      const todayIdx=(new Date().getDay()+6)%7;
+      showModal('KI-Empfehlung: Wochenplan anpassen',
+        `Aufgrund deines aktuellen Recovery Scores von <strong>${recovery}/100</strong> empfiehlt die KI, deinen Wochenplan anzupassen — z.B. den Leg Day zu verschieben und heute leichter zu trainieren.<br><br>Möchtest du die Anpassung übernehmen?`,
+        function(){weekPlanState=newPlan;drawWeekGrid(recovery);});
+      drawWeekGrid(recovery,weekPlanState); // keep old until confirmed
+      return;
+    } else {
+      weekPlanState=newPlan;
+    }
+  }
+  drawWeekGrid(recovery,weekPlanState);
+}
+function drawWeekGrid(recovery,plan){
+  plan=plan||getWeekPlan(recovery);
+  const todayIdx=(new Date().getDay()+6)%7;
+  document.getElementById('week-grid').innerHTML=plan.map((wt,i)=>{
+    const wp=workoutPlans[wt]||workoutPlans.rest;
+    const isT=i===todayIdx;
+    const bc=wt==='rest'?'badge-red':wt==='recovery'?'badge-yellow':'badge-green';
+    const bl=wt==='rest'?'Rest':wt==='recovery'?'Erhol.':'Aktiv';
+    return`<div class="day-card${isT?' active':''}" onclick="showWorkout(${i},'${wt}')"><div class="day-name">${daysShort[i]}</div><div class="day-type">${wp.short}</div><span class="badge ${bc}" style="font-size:9px;padding:2px 5px;">${bl}</span></div>`;
+  }).join('');
+  document.getElementById('week-status').innerHTML=recovery>=75?`<strong>Wochenplan: Maximaler Aufbau-Modus.</strong> Recovery ${recovery}/100 — alle schweren Sessions eingeplant.`:recovery>=50?`<strong>Wochenplan angepasst.</strong> Recovery ${recovery}/100 — Leg Day verschoben.`:`<strong>Wochenplan: Erholungs-Modus.</strong> Recovery ${recovery}/100 — schwere Sessions verschoben.`;
+}
+function showWorkout(dayIdx,wt){
+  document.querySelectorAll('.day-card').forEach((c,i)=>c.classList.toggle('active',i===dayIdx));
+  const wp=workoutPlans[wt]||workoutPlans.rest;
+  // Mark exercises affected by injury
+  const blocked=getBlockedExercises();
+  document.getElementById('selected-workout').innerHTML=`<div class="card-title">${daysFull[dayIdx]} — ${wp.label}</div><table class="workout-table">${wp.ex.map(e=>{
+    const isBlocked=blocked.includes(e[0]);
+    return`<tr><td style="${isBlocked?'color:var(--danger);text-decoration:line-through;':''}">${e[0]}${isBlocked?' ⚠':''}</td><td>${e[1]}</td><td>${isBlocked?'<span style="color:var(--danger);">gesperrt</span>':e[2]}</td></tr>`;
+  }).join('')}</table>${blocked.length?'<p style="font-size:11px;color:var(--danger);margin-top:10px;">⚠ Durchgestrichene Übungen sind wegen gemeldeter Schmerzen gesperrt — siehe Schmerz-Check Tab.</p>':''}`;
+}
+
+// ════════ VITAMIN D ════════
+function calcVitD(){
+  const skin=parseInt(val('vd-skin'))||2;
+  const sun=parseInt(val('vd-sun'))||30;
+  const season=parseFloat(val('vd-season'))||0.8;
+  const weight=parseFloat(val('p-weight'))||80;
+  const level=parseFloat(val('vd-level'))||0;
+  const skinMult=skin===1?1.4:skin===2?1.0:0.5;
+  const sunIE=Math.min(sun*skinMult*season*150,20000);
+  const weightFactor=weight/70;
+  const baseline=level>0?level:15;
+  const deficit=Math.max(0,50-baseline);
+  const toRaiseDose=Math.round(deficit*100*weightFactor/10)*10;
+  const totalNeeded=Math.max(0,toRaiseDose-Math.round(sunIE));
+  let suppDose=0;
+  if(totalNeeded<=0)suppDose=0;
+  else if(totalNeeded<=1000)suppDose=1000;
+  else if(totalNeeded<=2000)suppDose=2000;
+  else if(totalNeeded<=3000)suppDose=3000;
+  else if(totalNeeded<=5000)suppDose=5000;
+  else suppDose=10000;
+  const estimatedLevel=Math.min(100,Math.round(baseline+suppDose/100/weightFactor+(sunIE/100)));
+  let statusColor,statusBadge,statusText;
+  if(estimatedLevel>=50&&estimatedLevel<=80){statusColor='#39FF14';statusText='Optimal (50–80 ng/mL)';statusBadge='badge-green';}
+  else if(estimatedLevel>=30){statusColor='#FFB800';statusText='Ausreichend (30–50)';statusBadge='badge-yellow';}
+  else{statusColor='#FF4444';statusText='Mangel (<30)';statusBadge='badge-red';}
+  const barPct=Math.min(100,Math.round(estimatedLevel/80*100));
+  document.getElementById('vitd-result').innerHTML=`
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px;">
+      <div class="summary-card"><div class="summary-val" style="font-size:17px;color:#FFB800;">${Math.round(sunIE).toLocaleString('de-DE')}</div><div class="summary-label">IE aus Sonne/Tag</div></div>
+      <div class="summary-card"><div class="summary-val" style="font-size:17px;color:var(--accent);">${suppDose.toLocaleString('de-DE')}</div><div class="summary-label">IE Supplement täglich</div></div>
+      <div class="summary-card"><div class="summary-val" style="font-size:17px;color:${statusColor};">${estimatedLevel}</div><div class="summary-label">ng/mL geschätzt</div></div>
+    </div>
+    <div style="margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;font-size:12px;">
+      <span style="color:var(--muted);">Geschätzter Vitamin D Spiegel</span><span class="badge ${statusBadge}">${statusText}</span>
+    </div>
+    <div class="vitd-result-bar"><div class="vitd-result-fill" style="width:${barPct}%;background:${statusColor};"></div></div>
+    <div class="vitd-markers"><span>0</span><span>20</span><span style="color:#FFB800;">30 Min.</span><span style="color:#39FF14;">50 Optimal</span><span>80</span></div>
+    <div style="margin-top:12px;font-size:12px;color:var(--muted);line-height:1.8;font-family:'JetBrains Mono',monospace;">
+      ${suppDose===0?'✓ Kein Supplement nötig — Sonnenlicht deckt deinen Bedarf.':suppDose<=2000?`★ Empfehlung: ${suppDose.toLocaleString('de-DE')} IE D₃ täglich + K2 (100–200 mcg MK-7). Morgens mit Fett einnehmen.`:`⚠ Empfehlung: ${suppDose.toLocaleString('de-DE')} IE D₃ täglich — hohe Dosis. Nach 8–12 Wochen Blutwert kontrollieren.`}
+      ${level===0?'<br>Tipp: 25-OH-D Blutwert beim Hausarzt messen lassen.':''}
+    </div>`;
+}
+
+// ════════ INJURY / SCHMERZ-CHECK ════════
+function togglePain(part){
+  painMap[part]=((painMap[part]||0)+1)%3;
+  if(painMap[part]===0)delete painMap[part];
+  saveAll();
+  renderInjury();
+}
+function getBlockedExercises(){
+  let blocked=[];
+  Object.keys(painMap).forEach(part=>{
+    if(painMap[part]>=1&&injuryMap[part]){blocked=blocked.concat(injuryMap[part].avoid);}
+  });
+  return [...new Set(blocked)];
+}
+function renderInjury(){
+  // color body parts
+  document.querySelectorAll('.bodypart').forEach(el=>{
+    const part=el.getAttribute('data-part');
+    el.classList.remove('pain-mild','pain-severe');
+    if(painMap[part]===1)el.classList.add('pain-mild');
+    if(painMap[part]===2)el.classList.add('pain-severe');
+  });
+  const active=Object.keys(painMap).filter(p=>painMap[p]>0);
+  const info=document.getElementById('injury-info');
+  const adjCard=document.getElementById('injury-adjustment');
+  if(active.length===0){
+    info.innerHTML='<p style="font-size:13px;color:var(--muted);">Keine Beschwerden gemeldet. Dein Training läuft wie geplant. 💪</p>';
+    adjCard.style.display='none';
+    return;
+  }
+  info.innerHTML=active.map(p=>{
+    const inj=injuryMap[p];if(!inj)return'';
+    const sev=painMap[p]===2?'<span class="badge badge-red">Starker Schmerz</span>':'<span class="badge badge-yellow">Leichter Schmerz</span>';
+    return`<div style="margin-bottom:12px;"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;"><strong style="font-size:13px;">${inj.name}</strong>${sev}</div><div style="font-size:12px;color:var(--muted);">Gesperrt: ${inj.avoid.join(', ')}</div></div>`;
+  }).join('');
+  adjCard.style.display='block';
+  const allAlts=[...new Set(active.map(p=>injuryMap[p]?.alt).filter(Boolean))];
+  const blocked=getBlockedExercises();
+  document.getElementById('injury-adjust-content').innerHTML=`
+    <div class="ai-box" style="margin-bottom:12px;"><div class="ai-badge">KI VORSCHLAG</div>
+    <strong>Die KI hat ${blocked.length} Übung(en) aus deinem Plan entfernt.</strong> Damit der betroffene Bereich heilen kann, werden folgende Übungen heute gesperrt: ${blocked.join(', ')}.</div>
+    <div class="card-title" style="margin-bottom:8px;">Empfohlene Alternativen</div>
+    ${allAlts.map(a=>`<div class="stat-row"><span style="color:var(--accent);">→</span><span style="color:var(--text);font-family:inherit;font-weight:400;">${a}</span></div>`).join('')}
+    <button class="cta-btn" style="margin-top:14px;" onclick="applyInjuryAdjustment()">✓ Anpassung übernehmen &amp; Plan aktualisieren</button>`;
+}
+function applyInjuryAdjustment(){
+  showModal('Training anpassen?',
+    'Die KI ersetzt die gesperrten Übungen im heutigen Plan durch schonende Alternativen. Möchtest du das übernehmen?',
+    function(){
+      const todayIdx=(new Date().getDay()+6)%7;
+      const recovery=calcRecovery(getStatus());
+      const plan=weekPlanState||getWeekPlan(recovery);
+      showWorkout(todayIdx,plan[todayIdx]);
+      alert('✓ Plan aktualisiert! Wechsle zum Wochenplan-Tab — gesperrte Übungen sind markiert.');
+    });
+}
+
+// ════════ DELOAD TIMER ════════
+function getDeloadWeeks(){
+  const start=appState.deloadStart||Date.now();
+  return Math.floor((Date.now()-start)/(7*24*60*60*1000));
+}
+function renderDeloadBanner(){
+  const weeks=getDeloadWeeks();
+  const slot=document.getElementById('deload-banner-slot');
+  if(weeks>=6){
+    const urgent=weeks>=8;
+    slot.innerHTML=`<div class="deload-banner ${urgent?'urgent':''}">
+      <div class="deload-icon">${urgent?'🛑':'⏰'}</div>
+      <div style="flex:1;">
+        <div style="font-size:13px;font-weight:600;">${urgent?'Deload überfällig!':'Deload-Woche empfohlen'}</div>
+        <div style="font-size:12px;color:var(--muted);">Du trainierst seit ${weeks} Wochen ohne Deload. ${urgent?'Dein ZNS braucht dringend eine Entlastungswoche.':'Plane diese Woche eine Entlastungswoche (−40% Volumen).'}</div>
+      </div>
+    </div>`;
+  } else {
+    slot.innerHTML='';
+  }
+}
+function renderDeloadStatus(){
+  const weeks=getDeloadWeeks();
+  const pct=Math.min(100,Math.round(weeks/7*100));
+  const color=weeks>=8?'#FF4444':weeks>=6?'#FFB800':'#39FF14';
+  document.getElementById('deload-status').innerHTML=`
+    <div class="stat-row"><span>Aktuelle Trainingswoche</span><span style="color:${color};">Woche ${weeks+1}</span></div>
+    <div class="stat-row"><span>Empfohlener Deload</span><span>nach 6–8 Wochen</span></div>
+    <div class="progress-bar-wrap" style="margin-top:10px;">
+      <span style="min-width:60px;color:var(--muted);font-size:11px;">Zyklus</span>
+      <div class="progress-bar-bg"><div class="progress-bar-fill" style="width:${pct}%;background:${color};"></div></div>
+      <span style="min-width:50px;text-align:right;font-size:11px;color:${color};">${weeks}/7 Wo.</span>
+    </div>
+    <div style="margin-top:10px;font-size:12px;color:var(--muted);">${weeks>=6?'⚠ Zeit für eine Deload-Woche: Volumen um 40% reduzieren, Intensität halten.':`Noch ${6-weeks} Woche(n) bis zur empfohlenen Deload-Woche.`}</div>`;
+}
+function resetDeloadCycle(){
+  showModal('Neuen Zyklus starten?',
+    'Damit setzt du den Deload-Timer zurück auf Woche 1. Mach das, nachdem du eine Deload-Woche absolviert hast.',
+    function(){appState.deloadStart=Date.now();localStorage.setItem('hc_state',JSON.stringify(appState));renderDeloadStatus();renderDeloadBanner();});
+}
+
+// ════════ NAVY KFA ════════
+function calcNavy(){
+  const p=getProfile();
+  const neck=parseFloat(val('m-neck'))||38;
+  const waist=parseFloat(val('m-waist'))||84;
+  const hip=parseFloat(val('m-hip'))||95;
+  const h=p.height;
+  let bf;
+  if(p.gender==='m'){
+    bf=495/(1.0324-0.19077*Math.log10(waist-neck)+0.15456*Math.log10(h))-450;
+  } else {
+    bf=495/(1.29579-0.35004*Math.log10(waist+hip-neck)+0.22100*Math.log10(h))-450;
+  }
+  bf=Math.max(3,Math.min(50,bf));
+  const bfR=Math.round(bf*10)/10;
+  const weight=p.weight;
+  const fatMass=Math.round(weight*bf/100*10)/10;
+  const leanMass=Math.round((weight-fatMass)*10)/10;
+  let cat,catColor;
+  if(p.gender==='m'){
+    if(bf<6){cat='Essentiell';catColor='#3B82F6';}
+    else if(bf<14){cat='Athletisch';catColor='#39FF14';}
+    else if(bf<18){cat='Fit';catColor='#39FF14';}
+    else if(bf<25){cat='Durchschnitt';catColor='#FFB800';}
+    else{cat='Erhöht';catColor='#FF4444';}
+  } else {
+    if(bf<14){cat='Essentiell';catColor='#3B82F6';}
+    else if(bf<21){cat='Athletisch';catColor='#39FF14';}
+    else if(bf<25){cat='Fit';catColor='#39FF14';}
+    else if(bf<32){cat='Durchschnitt';catColor='#FFB800';}
+    else{cat='Erhöht';catColor='#FF4444';}
+  }
+  document.getElementById('navy-result').innerHTML=`
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:12px;">
+      <div class="summary-card"><div class="summary-val" style="font-size:19px;color:${catColor};">${bfR}%</div><div class="summary-label">Körperfett</div></div>
+      <div class="summary-card"><div class="summary-val" style="font-size:19px;color:var(--accent);">${leanMass}</div><div class="summary-label">Magermasse (kg)</div></div>
+      <div class="summary-card"><div class="summary-val" style="font-size:19px;color:#FFB800;">${fatMass}</div><div class="summary-label">Fettmasse (kg)</div></div>
+    </div>
+    <div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;">
+      <span style="color:var(--muted);">Kategorie</span><span class="badge" style="background:${catColor}22;color:${catColor};">${cat}</span>
+    </div>`;
+  return bfR;
+}
+
+function saveMeasurement(){
+  const bf=calcNavy();
+  const entry={
+    date:new Date().toISOString().slice(0,10),
+    weight:parseFloat(val('p-weight'))||80,
+    bf:bf,
+    waist:parseFloat(val('m-waist'))||0,
+    chest:parseFloat(val('m-chest'))||0,
+    arm:parseFloat(val('m-arm'))||0,
+    thigh:parseFloat(val('m-thigh'))||0,
+  };
+  // replace if same date exists
+  measureData=measureData.filter(m=>m.date!==entry.date);
+  measureData.push(entry);
+  measureData.sort((a,b)=>a.date.localeCompare(b.date));
+  if(measureData.length>30)measureData=measureData.slice(-30);
+  saveMeasureData();
+  saveAll();
+  renderMeasureHistory();
+  alert('✓ Maße für heute gespeichert!');
+}
+
+function renderMeasureHistory(){
+  const el=document.getElementById('measure-history');
+  if(measureData.length===0){
+    el.innerHTML='<p style="font-size:13px;color:var(--muted);">Noch keine Maße gespeichert. Trage oben deine Werte ein und klicke "Heutige Maße speichern".</p>';
+    return;
+  }
+  const metrics=[
+    {key:'weight',label:'Gewicht',unit:'kg',color:'#39FF14'},
+    {key:'bf',label:'Körperfett',unit:'%',color:'#FFB800'},
+    {key:'waist',label:'Bauch',unit:'cm',color:'#3B82F6'},
+    {key:'chest',label:'Brust',unit:'cm',color:'#EC4899'},
+    {key:'arm',label:'Oberarm',unit:'cm',color:'#39FF14'},
+    {key:'thigh',label:'Oberschenkel',unit:'cm',color:'#3B82F6'},
+  ];
+  let html='';
+  metrics.forEach(m=>{
+    const series=measureData.filter(d=>d[m.key]>0);
+    if(series.length===0)return;
+    const vals=series.map(d=>d[m.key]);
+    const min=Math.min(...vals),max=Math.max(...vals);
+    const range=max-min||1;
+    const first=vals[0],last=vals[vals.length-1];
+    const diff=Math.round((last-first)*10)/10;
+    const diffColor=diff>0?(m.key==='bf'||m.key==='waist'?'var(--danger)':'var(--accent)'):(m.key==='bf'||m.key==='waist'?'var(--accent)':diff<0?'var(--danger)':'var(--muted)');
+    const diffTxt=diff>0?`+${diff}`:`${diff}`;
+    html+=`<div style="margin-bottom:16px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+        <span style="font-size:13px;font-weight:600;">${m.label}</span>
+        <span style="font-size:11px;font-family:'JetBrains Mono',monospace;"><span style="color:var(--muted);">aktuell ${last}${m.unit}</span> · <span style="color:${diffColor};">${diffTxt}${m.unit}</span></span>
+      </div>
+      <div class="maesure-graph-bar">
+        ${series.map(d=>{
+          const pct=Math.round((d[m.key]-min)/range*80)+20;
+          return`<div style="flex:1;background:${m.color};opacity:0.6;border-radius:3px 3px 0 0;height:${pct}%;min-height:4px;" title="${d.date}: ${d[m.key]}${m.unit}"></div>`;
+        }).join('')}
+      </div>
+      <div style="display:flex;gap:2px;">
+        ${series.map(d=>`<div style="flex:1;font-size:7px;color:var(--muted);text-align:center;overflow:hidden;font-family:'JetBrains Mono',monospace;">${d.date.slice(5)}</div>`).join('')}
+      </div>
+    </div>`;
+  });
+  el.innerHTML=html;
+}
+
+// ════════ LOG ════════
+function getDateKey(offset){const d=new Date();d.setDate(d.getDate()+(offset||0));return d.toISOString().slice(0,10);}
+function formatDateLabel(offset){if(offset===0)return'Heute';if(offset===-1)return'Gestern';const d=new Date();d.setDate(d.getDate()+offset);return d.toLocaleDateString('de-DE',{weekday:'short',day:'numeric',month:'short'});}
+function changeLogDate(dir){logDateOffset+=dir;if(logDateOffset>0)logDateOffset=0;renderLog();}
+
+function renderLog(){
+  const dk=getDateKey(logDateOffset);
+  document.getElementById('log-date-label').textContent=formatDateLabel(logDateOffset);
+  if(!logData[dk])logData[dk]={exercises:[],note:''};
+  if(logData[dk].exercises.length===0){
+    logData[dk].exercises=defaultExercises.map(n=>({name:n,sets:[{kg:'',reps:''}]}));
+  }
+  renderExercises(dk);
+  renderWeekSummary();
+  renderStrengthHistory();
+  renderLogFeedback(dk);
+  renderWeekFeedback();
+}
+
+function renderExercises(dk){
+  const el=document.getElementById('exercise-log-list');
+  el.innerHTML='';
+  (logData[dk]?.exercises||[]).forEach((ex,ei)=>{
+    const pr=prData[ex.name]||0;
+    const maxKg=Math.max(0,...ex.sets.map(s=>parseFloat(s.kg)||0));
+    const isNewPR=maxKg>0&&maxKg>=pr;
+    const div=document.createElement('div');
+    div.className='log-exercise-card';
+    div.innerHTML=`
+      <div class="log-ex-header">
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+          <input style="background:transparent;border:none;border-bottom:1px solid var(--border);color:var(--text);font-size:14px;font-weight:600;font-family:'Space Grotesk',sans-serif;width:160px;outline:none;padding:2px 0;" value="${ex.name}" onchange="renameEx('${dk}',${ei},this.value)">
+          ${isNewPR&&maxKg>0?'<span class="badge badge-yellow">🏆 PR!</span>':''}
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <span style="font-family:JetBrains Mono,monospace;font-size:11px;color:var(--accent);">PR: ${pr>0?pr+'kg':'—'}</span>
+          <button class="del-btn" onclick="removeExercise('${dk}',${ei})">✕</button>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:28px 1fr 1fr 78px 26px;gap:6px;margin-bottom:6px;">
+        <span class="log-col-label">#</span><span class="log-col-label">Gewicht (kg)</span><span class="log-col-label">Reps</span><span class="log-col-label">Volumen</span><span></span>
+      </div>
+      <div>${ex.sets.map((set,si)=>renderSetRow(dk,ei,si,set)).join('')}</div>
+      <button class="add-set-btn" onclick="addSet('${dk}',${ei})">+ Satz</button>`;
+    el.appendChild(div);
+  });
+}
+function renderSetRow(dk,ei,si,set){
+  const kg=set.kg||'',reps=set.reps||'';
+  const vol=kg&&reps?Math.round(parseFloat(kg)*parseInt(reps))+'kg':'—';
+  return`<div style="display:grid;grid-template-columns:28px 1fr 1fr 78px 26px;gap:6px;align-items:center;margin-bottom:7px;">
+    <span class="log-set-num">${si+1}</span>
+    <input class="log-input" type="number" placeholder="kg" value="${kg}" oninput="updateSet('${dk}',${ei},${si},'kg',this.value)" min="0" step="0.5">
+    <input class="log-input" type="number" placeholder="reps" value="${reps}" oninput="updateSet('${dk}',${ei},${si},'reps',this.value)" min="0">
+    <span class="log-input" style="cursor:default;color:var(--accent);font-size:11px;">${vol}</span>
+    <button class="del-btn" onclick="removeSet('${dk}',${ei},${si})">−</button>
+  </div>`;
+}
+function updateSet(dk,ei,si,field,v){
+  if(!logData[dk]||!logData[dk].exercises[ei])return;
+  logData[dk].exercises[ei].sets[si][field]=v;
+  const ex=logData[dk].exercises[ei];
+  const maxKg=Math.max(0,...ex.sets.map(s=>parseFloat(s.kg)||0));
+  if(maxKg>0&&maxKg>(prData[ex.name]||0))prData[ex.name]=maxKg;
+  saveLog();
+  renderExercises(dk);renderWeekSummary();renderLogFeedback(dk);renderStrengthHistory();renderWeekFeedback();
+}
+function addSet(dk,ei){logData[dk].exercises[ei].sets.push({kg:'',reps:''});saveLog();renderExercises(dk);}
+function removeSet(dk,ei,si){if(logData[dk].exercises[ei].sets.length>1){logData[dk].exercises[ei].sets.splice(si,1);saveLog();renderExercises(dk);}}
+function removeExercise(dk,ei){logData[dk].exercises.splice(ei,1);saveLog();renderExercises(dk);renderWeekSummary();}
+function renameEx(dk,ei,name){if(logData[dk]&&logData[dk].exercises[ei])logData[dk].exercises[ei].name=name;saveLog();}
+function addExercise(){
+  const dk=getDateKey(logDateOffset);
+  if(!logData[dk])logData[dk]={exercises:[],note:''};
+  const name=prompt('Übungsname (z.B. Bankdrücken):','');
+  if(name&&name.trim()){logData[dk].exercises.push({name:name.trim(),sets:[{kg:'',reps:''}]});saveLog();renderExercises(dk);}
+}
+
+function renderWeekSummary(){
+  let sessions=0,volume=0,prs=0;
+  const prSet=new Set();
+  for(let i=-6;i<=0;i++){
+    const dk=getDateKey(i),d=logData[dk];
+    if(!d)continue;
+    const hasData=d.exercises.some(ex=>ex.sets.some(s=>s.kg&&s.reps));
+    if(hasData)sessions++;
+    d.exercises.forEach(ex=>{
+      ex.sets.forEach(s=>{volume+=(parseFloat(s.kg)||0)*(parseInt(s.reps)||0);});
+      const maxKg=Math.max(0,...ex.sets.map(s=>parseFloat(s.kg)||0));
+      if(maxKg>0&&maxKg===(prData[ex.name]||0)&&!prSet.has(ex.name)){prSet.add(ex.name);prs++;}
+    });
+  }
+  document.getElementById('wb-sessions').textContent=sessions;
+  document.getElementById('wb-volume').textContent=volume>=1000?Math.round(volume/100)/10+'t':Math.round(volume)+'kg';
+  document.getElementById('wb-pr').textContent=prs;
+  const lifts=['Bankdrücken','Kniebeuge','Klimmzüge','Romanian DL'];
+  const maxPR=Math.max(20,...lifts.map(l=>prData[l]||0));
+  document.getElementById('wb-progress-bars').innerHTML=lifts.map(l=>{
+    const pr=prData[l]||0,pct=pr>0?Math.round(pr/maxPR*100):0;
+    return`<div class="progress-bar-wrap"><span style="min-width:120px;color:var(--muted);font-size:11px;font-family:'JetBrains Mono',monospace;">${l}</span><div class="progress-bar-bg"><div class="progress-bar-fill" style="width:${pct}%;background:var(--accent);"></div></div><span style="min-width:50px;text-align:right;font-size:11px;font-family:'JetBrains Mono',monospace;color:${pr>0?'var(--accent)':'var(--muted)'};">${pr>0?pr+' kg':'—'}</span></div>`;
+  }).join('');
+}
+
+function renderStrengthHistory(){
+  const mainLifts=['Bankdrücken','Kniebeuge','Klimmzüge'];
+  let html='';
+  mainLifts.forEach(lift=>{
+    const history=[];
+    for(let i=-13;i<=0;i++){
+      const dk=getDateKey(i),d=logData[dk];
+      if(!d)continue;
+      const ex=d.exercises.find(e=>e.name===lift);
+      if(!ex)continue;
+      const maxKg=Math.max(0,...ex.sets.map(s=>parseFloat(s.kg)||0));
+      if(maxKg>0)history.push({date:dk.slice(5),kg:maxKg});
+    }
+    if(history.length===0)return;
+    const trend=history.length>=2?history[history.length-1].kg-history[0].kg:0;
+    const tColor=trend>0?'var(--accent)':trend<0?'var(--danger)':'var(--muted)';
+    const tTxt=trend>0?`+${trend}kg ↑`:trend<0?`${trend}kg ↓`:'stabil →';
+    const maxH=Math.max(...history.map(h=>h.kg));
+    html+=`<div style="margin-bottom:16px;"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;"><span style="font-size:13px;font-weight:600;">${lift}</span><div style="display:flex;align-items:center;gap:8px;"><span style="font-size:11px;color:${tColor};font-family:'JetBrains Mono',monospace;">${tTxt}</span><span class="badge badge-green" style="font-size:9px;">PR: ${prData[lift]||'—'}${prData[lift]?'kg':''}</span></div></div><div style="display:flex;align-items:flex-end;gap:3px;height:44px;">${history.map(h=>{const pct=Math.round(h.kg/maxH*100);return`<div style="flex:1;background:var(--accent);opacity:0.6;border-radius:3px 3px 0 0;height:${pct}%;min-height:4px;" title="${h.date}: ${h.kg}kg"></div>`;}).join('')}</div><div style="display:flex;gap:3px;">${history.map(h=>`<div style="flex:1;font-size:8px;color:var(--muted);text-align:center;overflow:hidden;font-family:'JetBrains Mono',monospace;">${h.date}</div>`).join('')}</div></div>`;
+  });
+  document.getElementById('strength-history').innerHTML=html||'<p style="font-size:13px;color:var(--muted);">Noch keine Daten. Trage deine Kraftwerte ein und komm morgen wieder.</p>';
+}
+
+function renderLogFeedback(dk){
+  const d=logData[dk];
+  if(!d||!d.exercises.some(ex=>ex.sets.some(s=>s.kg&&s.reps))){
+    document.getElementById('log-ai-feedback').textContent='Trage deine Werte ein, um eine KI-Analyse zu erhalten...';return;
+  }
+  const totalVol=d.exercises.reduce((sum,ex)=>sum+ex.sets.reduce((s2,set)=>s2+(parseFloat(set.kg)||0)*(parseInt(set.reps)||0),0),0);
+  const msgs=[];
+  const newPRexes=d.exercises.filter(ex=>{const maxKg=Math.max(0,...ex.sets.map(s=>parseFloat(s.kg)||0));return maxKg>0&&maxKg===(prData[ex.name]||0);});
+  if(newPRexes.length>0)msgs.push(`<strong>🏆 Neuer PR: ${newPRexes.map(e=>e.name).join(', ')}!</strong> Maximaler Hypertrophiereiz.`);
+  if(totalVol>0)msgs.push(`Gesamtvolumen heute: <strong style="color:var(--accent);">${Math.round(totalVol).toLocaleString('de-DE')} kg</strong>.`);
+  const sugg=d.exercises.map(ex=>{
+    const maxKg=Math.max(0,...ex.sets.map(s=>parseFloat(s.kg)||0));
+    const maxReps=Math.max(0,...ex.sets.map(s=>parseInt(s.reps)||0));
+    if(!maxKg)return null;
+    if(maxReps>=10)return`<strong>${ex.name}:</strong> 10er-Marke geknackt → nächste Session +2,5 kg.`;
+    if(maxReps>=8)return`<strong>${ex.name}:</strong> Solide. Noch nicht am Limit → gleiche Last, mehr Reps.`;
+    if(maxReps<=5)return`<strong>${ex.name}:</strong> Schwere Intensität — perfekt für Kraft. Nächste Woche ein Satz mehr.`;
+    return null;
+  }).filter(Boolean);
+  if(sugg.length)msgs.push('<br><strong>KI Steigerungsplan:</strong><br>'+sugg.join('<br>'));
+  document.getElementById('log-ai-feedback').innerHTML=msgs.join(' ')||'Session gespeichert.';
+}
+
+function renderWeekFeedback(){
+  let sessions=0,volume=0,prs=0,lastWeekVol=0;
+  for(let i=-6;i<=0;i++){
+    const d=logData[getDateKey(i)];
+    if(!d)continue;
+    if(d.exercises.some(ex=>ex.sets.some(s=>s.kg&&s.reps)))sessions++;
+    d.exercises.forEach(ex=>ex.sets.forEach(s=>{volume+=(parseFloat(s.kg)||0)*(parseInt(s.reps)||0);}));
+  }
+  for(let i=-13;i<=-7;i++){
+    const d=logData[getDateKey(i)];
+    if(!d)continue;
+    d.exercises.forEach(ex=>ex.sets.forEach(s=>{lastWeekVol+=(parseFloat(s.kg)||0)*(parseInt(s.reps)||0);}));
+  }
+  const el=document.getElementById('week-feedback');
+  if(sessions===0&&volume===0){
+    el.textContent='Sammle Daten der Woche... Trage deine Trainings im Log ein, um ein Wochenfeedback zu erhalten.';
+    return;
+  }
+  const msgs=[];
+  msgs.push(`<strong>Diese Woche:</strong> ${sessions} Trainingseinheiten, ${Math.round(volume).toLocaleString('de-DE')} kg Gesamtvolumen.`);
+  if(lastWeekVol>0){
+    const change=Math.round((volume-lastWeekVol)/lastWeekVol*100);
+    if(change>5)msgs.push(`<span style="color:var(--accent);">↑ Volumen +${change}% zur Vorwoche</span> — Progressive Overload greift. Weiter so!`);
+    else if(change<-5)msgs.push(`<span style="color:var(--danger);">↓ Volumen ${change}% zur Vorwoche</span> — falls kein Deload geplant war: nächste Woche wieder steigern.`);
+    else msgs.push(`Volumen stabil zur Vorwoche (${change>=0?'+':''}${change}%).`);
+  }
+  if(sessions<3)msgs.push('Tipp: Für optimalen Muskelaufbau sind 3–5 Sessions/Woche ideal.');
+  else if(sessions>=4)msgs.push('Trainingsfrequenz top für Hypertrophie. 💪');
+  const weeks=getDeloadWeeks();
+  if(weeks>=6)msgs.push('<span style="color:var(--warn);">⏰ Deload-Woche jetzt einplanen.</span>');
+  el.innerHTML=msgs.join(' ');
+}
+
+// ════════ HEALTH FILE IMPORT ════════
+function importHealthFile(event){
+  const file=event.target.files[0];
+  if(!file)return;
+  const reader=new FileReader();
+  const status=document.getElementById('import-status');
+  reader.onload=function(e){
+    try{
+      const content=e.target.result;
+      let imported={};
+      if(file.name.endsWith('.json')){
+        const data=JSON.parse(content);
+        imported=parseHealthJSON(data);
+      } else {
+        imported=parseHealthCSV(content);
+      }
+      let applied=[];
+      if(imported.hrv){setVal('hrv',Math.round(imported.hrv));applied.push('HRV');}
+      if(imported.rhr){setVal('rhr',Math.round(imported.rhr));applied.push('Ruhepuls');}
+      if(imported.steps){setVal('steps',Math.round(imported.steps));applied.push('Schritte');}
+      if(imported.sleep){setVal('sleep',Math.round(imported.sleep));applied.push('Schlaf');}
+      if(applied.length){
+        updateAll();
+        status.innerHTML=`<span style="color:var(--accent);">✓ Importiert: ${applied.join(', ')}</span>`;
+      } else {
+        status.innerHTML='<span style="color:var(--warn);">Keine bekannten Werte gefunden. Prüfe das Dateiformat.</span>';
+      }
+    }catch(err){
+      status.innerHTML='<span style="color:var(--danger);">Fehler beim Lesen der Datei: '+err.message+'</span>';
+    }
+  };
+  reader.readAsText(file);
+}
+function parseHealthJSON(data){
+  // Health Auto Export JSON structure varies; try common paths
+  const out={};
+  const metrics=data.data?.metrics||data.metrics||[];
+  if(Array.isArray(metrics)){
+    metrics.forEach(m=>{
+      const name=(m.name||'').toLowerCase();
+      const last=Array.isArray(m.data)&&m.data.length?m.data[m.data.length-1]:null;
+      const qty=last?(last.qty||last.value||last.Avg):null;
+      if(qty==null)return;
+      if(name.includes('heart_rate_variability'))out.hrv=qty;
+      else if(name.includes('resting_heart_rate'))out.rhr=qty;
+      else if(name.includes('step_count'))out.steps=qty;
+      else if(name.includes('sleep'))out.sleep=Math.min(10,Math.round(qty/0.8));
+    });
+  }
+  return out;
+}
+function parseHealthCSV(content){
+  const out={};
+  const lines=content.split(/\r?\n/).filter(l=>l.trim());
+  if(lines.length<2)return out;
+  const header=lines[0].toLowerCase().split(/[,;]/);
+  const lastRow=lines[lines.length-1].split(/[,;]/);
+  header.forEach((h,i)=>{
+    const v=parseFloat(lastRow[i]);
+    if(isNaN(v))return;
+    if(h.includes('hrv')||h.includes('variability'))out.hrv=v;
+    else if(h.includes('resting')&&h.includes('heart'))out.rhr=v;
+    else if(h.includes('step'))out.steps=v;
+    else if(h.includes('sleep'))out.sleep=Math.min(10,Math.round(v));
+  });
+  return out;
+}
+
+// ════════ RESET ════════
+function wipeAll(){
+  showModal('Alle Daten löschen?',
+    'Damit werden alle gespeicherten Kraftwerte, Maße, Profildaten und Einstellungen unwiderruflich gelöscht. Die Seite lädt neu.',
+    function(){localStorage.clear();location.reload();});
+}
+
+// ════════ INIT ════════
+loadState();
+updateAll();
+renderLog();
+renderDeloadStatus();
+calcNavy();
+renderMeasureHistory();
+</script>
+</body>
+</html>
