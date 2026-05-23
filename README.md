@@ -44,3 +44,7 @@ Because this is a single-file app, there is no installation, no `npm install`, a
 ***
 *Note: If you clear your browser cache or site data, your saved training and nutrition data will be lost, since everything is stored locally only.*
 
+***
+
+## Changelog
+Recent updates and notable changes are documented in [CHANGELOG.md](./CHANGELOG.md).
