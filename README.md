@@ -1,43 +1,46 @@
+
+
 # heath-concierge
-# ⚡ Vitale — KI Health Coach
+# ⚡ Vitale — AI Health Coach
 
-Ein hochintegriertes, intelligentes Dashboard für strukturiertes Bodybuilding, präzises Ernährungs-Tracking und datengetriebene Recovery. 
+A highly integrated, intelligent dashboard for structured bodybuilding, precise nutrition tracking, and data-driven recovery.
 
-Vitale ist als **Single-File Web App** konzipiert. Das bedeutet: Keine externen Abhängigkeiten, keine Datenbank, keine Cloud. Alle Berechnungen und Daten bleiben zu 100 % lokal und privat im Speicher deines Browsers (`localStorage`).
+Vitale is designed as a **single-file web app**. That means: no external dependencies, no database, no cloud. All calculations and data remain 100% local and private in your browser memory (`localStorage`).
 
 ## ✨ Features
 
-### 🏋️ Training & Hypertrophie
-* **Dynamische Trainingsplanung:** Push/Pull/Legs-Pläne basierend auf täglichen Erholungswerten (HRV, Schlaf, Ruhepuls).
-* **Interaktive Body-Map (Verletzungs-Bypass):** Visuelle Auswahl von Schmerzpunkten. Das System sperrt problematische Übungen automatisch und schlägt sinnvolle Alternativen vor.
-* **Progressive Overload & Logging:** Epley-1RM-Berechnung, Volumen-Tracking, PR-Benachrichtigungen und wöchentliche Muskelgruppen-Auslastung.
+### 🏋️ Training & Hypertrophy
+- **Dynamic training planning:** Push/Pull/Legs plans based on daily recovery metrics (HRV, sleep, resting heart rate).
+- **Interactive body map (injury bypass):** Visual pain-point selection. The system automatically disables problematic exercises and suggests suitable alternatives.
+- **Progressive overload & logging:** Epley 1RM calculation, volume tracking, PR notifications, and weekly muscle-group workload analysis.
 
-### 🥗 Ernährung & Makros
-* **TDEE & Ziel-Tracking:** Grundumsatz nach Mifflin-St. Jeor, angepasst an Lean-Bulk-, Erhalt- oder Cut-Ziele.
-* **Präzise Makro-Verteilung:** Dynamische Berechnung von Protein, Fett und Kohlenhydraten (inklusive Warnungen bei ineffizienten Fett-Ratios im Bulk).
-* **Periodisierungs-Check:** Erkennung von Gewichts-Stagnation mit konkreten Handlungsempfehlungen zur Kalorienanpassung.
+### 🥗 Nutrition & Macros
+- **TDEE & goal tracking:** Basal metabolic rate based on Mifflin-St. Jeor, adjusted for lean bulk, maintenance, or cut goals.
+- **Precise macro distribution:** Dynamic calculation of protein, fat, and carbohydrates, including warnings for inefficient fat ratios during a bulk.
+- **Periodization check:** Detection of weight plateaus with concrete recommendations for calorie adjustments.
 
-### ⌚ Health-Daten & Recovery
-* **Apple Watch Import:** Lokaler CSV/JSON-Import (z.B. via "Health Auto Export") für HRV, Ruhepuls, Schlafphasen und Aktivitätskalorien.
-* **Recovery-Score:** Eigener Algorithmus zur Berechnung der Tagesform (0-100) basierend auf Schlafqualität, Stress und Vitalwerten.
+### ⌚ Health Data & Recovery
+- **Apple Watch import:** Local CSV/JSON import (e.g. via “Health Auto Export”) for HRV, resting heart rate, sleep stages, and active calories.
+- **Recovery score:** A custom algorithm for daily readiness (0–100) based on sleep quality, stress, and vital signs.
 
-### 🩺 Körper & Gesundheit
-* **KFA-Rechner (Navy-Methode):** Berechnung von Magermasse und Körperfettanteil.
-* **Vitamin D₃ Rechner:** Ermittlung des Supplement-Bedarfs basierend auf Hauttyp, Sonnenexposition und Jahreszeit.
+### 🩺 Body & Health
+- **Body fat calculator (Navy method):** Calculation of lean mass and body fat percentage.
+- **Vitamin D3 calculator:** Estimation of supplement needs based on skin type, sun exposure, and season.
 
-## 🚀 Installation & Nutzung
+## 🚀 Installation & Usage
 
-Da es sich um eine Single-File App handelt, ist keine Installation, kein `npm install` und kein lokaler Server notwendig.
+Because this is a single-file app, there is no installation, no `npm install`, and no local server required.
 
-1. Lade die Datei `HealthConcierge v2.html` herunter.
-2. Öffne die Datei in einem beliebigen modernen Webbrowser (Chrome, Safari, Firefox).
-3. **Fertig.** Alle eingetragenen Daten werden automatisch im lokalen Speicher deines Browsers (`localStorage`) abgelegt.
+1. Download the file `HealthConcierge v2.html`.
+2. Open the file in any modern web browser (Chrome, Safari, Firefox).
+3. **Done.** All entered data is automatically stored in your browser’s local storage (`localStorage`).
 
 ## 🛠 Tech Stack
-* **HTML5** für die Struktur.
-* **CSS3** für das responsive, moderne Dark-Mode UI (inkl. CSS Variables und Flexbox/Grid-Layouts).
-* **Vanilla JavaScript (ES6)** für die gesamte Logik, Datenspeicherung und dynamische UI-Aktualisierung.
-* **Zero Dependencies:** Kein React, kein Vue, keine externen CSS-Frameworks.
+- **HTML5** for structure.
+- **CSS3** for the responsive, modern dark-mode UI, including CSS variables and Flexbox/Grid layouts.
+- **Vanilla JavaScript (ES6)** for all logic, data storage, and dynamic UI updates.
+- **Zero dependencies:** no React, no Vue, no external CSS framework.
 
----
-*Hinweis: Wenn du deinen Browser-Cache oder die Website-Daten löschst, gehen deine gespeicherten Trainings- und Ernährungsdaten verloren, da diese ausschließlich lokal gesichert werden.*
+***
+*Note: If you clear your browser cache or site data, your saved training and nutrition data will be lost, since everything is stored locally only.*
+
