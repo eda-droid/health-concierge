@@ -117,6 +117,7 @@ function updateAll(){
   renderDashboard();
   renderNutrition();
   renderSupps(c.protein);
+  if(typeof renderWeeklyReview==='function')renderWeeklyReview();
   renderWeekTab(c.recovery);
 
   if(document.getElementById('rmr-breakdown')){

@@ -129,7 +129,6 @@ function renderNutrition(){
     <div class="stat-row"><span class="sr-label" style="font-weight:600;">TDEE / Erhalt</span><span class="sr-val" style="font-weight:600;">${c.tdee}</span></div>
     <div class="stat-row"><span class="sr-label" style="color:var(--text);font-weight:600;">Ziel (${currentGoal})</span><span class="sr-val" style="color:${getGoalColor()};">${c.goalKcal}</span></div>`;
   renderMealTemplates();
-  renderWeeklyReview();
 }
 
 function renderWeeklyNutrition(){
