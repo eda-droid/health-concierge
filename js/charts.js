@@ -68,20 +68,37 @@ function _svgLineChart(points, opts={}){
   </svg>`;
 }
 
+const _TREND_METRICS={
+  weight:{label:'Gewichtsverlauf',      unit:'kg', colorHex:'#00E5A0'},
+  bf:    {label:'KFA-Verlauf',          unit:'%',  colorHex:'#FF6B6B'},
+  waist: {label:'Taille-Verlauf',       unit:'cm', colorHex:'#FFB347'},
+  hip:   {label:'Hüfte-Verlauf',        unit:'cm', colorHex:'#C77DFF'},
+  chest: {label:'Brust-Verlauf',        unit:'cm', colorHex:'#4FC3F7'},
+  arm:   {label:'Oberarm-Verlauf',      unit:'cm', colorHex:'#F06292'},
+  thigh: {label:'Oberschenkel-Verlauf', unit:'cm', colorHex:'#81C784'},
+};
+
 function renderWeightTrend(){
   const card=document.getElementById('weight-trend-card');if(!card)return;
   if(!measureData||measureData.length<2){card.style.display='none';return;}
-  card.style.display='block';
-  const recent=measureData.slice(-14).filter(m=>m.weight>0);
+  const sel=document.getElementById('trend-metric');
+  const metric=(sel&&sel.value)||'weight';
+  const cfg=_TREND_METRICS[metric]||_TREND_METRICS.weight;
+  const lbl=document.getElementById('trend-metric-label');
+  if(lbl)lbl.textContent=cfg.label;
+  const recent=measureData.slice(-14).filter(m=>m[metric]>0);
   if(recent.length<2){card.style.display='none';return;}
-  const first=recent[0].weight, last=recent[recent.length-1].weight;
+  card.style.display='block';
+  const first=recent[0][metric],last=recent[recent.length-1][metric];
   const diff=Math.round((last-first)*10)/10;
-  const diffColor=currentGoal==='cut'?(diff<0?'var(--accent)':'var(--danger)'):currentGoal==='bulk'?(diff>0?'var(--accent)':'var(--warn)'):'var(--muted)';
-  document.getElementById('weight-trend-badge').innerHTML=`<span class="badge" style="background:${diffColor}22;color:${diffColor};">${diff>0?'+':''}${diff} kg</span>`;
-  const points=recent.map(m=>({x:m.date,y:m.weight}));
+  const diffColor=metric==='weight'
+    ?(currentGoal==='cut'?(diff<0?'var(--accent)':'var(--danger)'):currentGoal==='bulk'?(diff>0?'var(--accent)':'var(--warn)'):'var(--muted)')
+    :(diff<0?'var(--accent)':'var(--muted)');
+  document.getElementById('weight-trend-badge').innerHTML=`<span class="badge" style="background:${diffColor}22;color:${diffColor};">${diff>0?'+':''}${diff} ${cfg.unit}</span>`;
+  const points=recent.map(m=>({x:m.date,y:m[metric]}));
   document.getElementById('weight-trend-chart').style.cssText='margin-bottom:4px;';
-  document.getElementById('weight-trend-chart').innerHTML=_svgLineChart(points,{color:'var(--accent)',colorHex:'#00E5A0',unit:'kg',h:72});
+  document.getElementById('weight-trend-chart').innerHTML=_svgLineChart(points,{colorHex:cfg.colorHex,unit:cfg.unit,h:72});
   document.getElementById('weight-trend-dates').innerHTML='';
   const weeks=recent.length>1?Math.round((new Date(recent[recent.length-1].date)-new Date(recent[0].date))/(7*24*3600*1000)*10)/10:0;
-  document.getElementById('weight-trend-note').textContent=`Aktuell: ${last} kg · ${recent.length} Messungen${weeks>0?' über '+weeks+' Wochen':''}. Im Tab "Profil & Körper" speichern.`;
+  document.getElementById('weight-trend-note').textContent=`Aktuell: ${last} ${cfg.unit} · ${recent.length} Messungen${weeks>0?' über '+weeks+' Wochen':''}. Im Tab "Profil & Körper" speichern.`;
 }

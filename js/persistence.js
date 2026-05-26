@@ -24,7 +24,7 @@ function saveAll(){
 }
 
 function loadState(){
-  if(!appState||!Object.keys(appState).length){appState={deloadStart:Date.now()};lsSet('hc_state',appState);return;}
+  if(!appState||!Object.keys(appState).length){appState={deloadStart:Date.now()};lsSet('hc_state',appState);setTimeout(()=>{if(typeof showToast==='function')showToast('Deload-Daten zurückgesetzt – Timer startet neu.');},800);return;}
   currentGoal=appState.goal||'bulk';
   slidersLocked=appState.slidersLocked||false;
   trainingMode=appState.trainingMode||'beginner';

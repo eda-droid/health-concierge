@@ -7,7 +7,7 @@ function switchTab(id,el){
   document.getElementById(id).classList.add('active');
   el.classList.add('active');
   if(id==='training'){renderLog();renderWeekTab();}
-  if(id==='profile'){renderInjury();calcNavy();renderMeasureHistory();renderDeloadStatus();}
+  if(id==='profile'){renderInjury();calcNavy();renderMeasureHistory();renderDeloadStatus();_initSubTabs('profile','profil');}
   if(id==='home')renderDashboard();
   if(id==='nutrition')renderNutrition();
 }
@@ -58,4 +58,59 @@ function setHealthEnergyUnit(unit){
 function unlockSliders(){
   showModal('Regler entsperren?','Die importierten Apple-Watch-Werte können wieder manuell geändert werden.',
     function(){slidersLocked=false;applyLockState();saveAll();});
+}
+
+// ════════════════════════════════════════════
+// SUB-TABS
+// ════════════════════════════════════════════
+function switchSubTab(group,name){
+  lsSet('hc_subtab_'+group,name);
+  document.querySelectorAll('.sub-tab[data-group="'+group+'"]').forEach(b=>b.classList.toggle('active',b.dataset.name===name));
+  document.querySelectorAll('.sub-panel[data-group="'+group+'"]').forEach(p=>p.classList.toggle('active',p.dataset.name===name));
+}
+function _initSubTabs(group,def){switchSubTab(group,lsGet('hc_subtab_'+group,def)||def);}
+
+// ════════════════════════════════════════════
+// TOAST
+// ════════════════════════════════════════════
+function showToast(msg,duration){
+  let t=document.getElementById('toast');
+  if(!t){t=document.createElement('div');t.id='toast';document.body.appendChild(t);}
+  t.textContent=msg;
+  t.classList.add('show');
+  clearTimeout(t._tid);
+  t._tid=setTimeout(()=>t.classList.remove('show'),duration||3500);
+}
+
+// ════════════════════════════════════════════
+// SETUP MODAL
+// ════════════════════════════════════════════
+function _showSetupModal(){
+  const el=document.getElementById('setup-modal-overlay');
+  if(el)el.style.display='flex';
+}
+function _hideSetupModal(){
+  const el=document.getElementById('setup-modal-overlay');
+  if(el)el.style.display='none';
+}
+function _submitSetup(){
+  const gender=document.getElementById('setup-gender').value;
+  const weight=parseFloat(document.getElementById('setup-weight').value);
+  const height=parseFloat(document.getElementById('setup-height').value);
+  const age=parseInt(document.getElementById('setup-age').value);
+  const err=document.getElementById('setup-error');
+  if(!weight||weight<30||weight>250){if(err)err.textContent='Bitte gültiges Gewicht eingeben (30–250 kg).';return;}
+  if(!height||height<140||height>220){if(err)err.textContent='Bitte gültige Größe eingeben (140–220 cm).';return;}
+  if(!age||age<14||age>99){if(err)err.textContent='Bitte gültiges Alter eingeben (14–99).';return;}
+  if(err)err.textContent='';
+  setVal('p-gender',gender);
+  setVal('p-weight',weight);
+  setVal('p-height',height);
+  setVal('p-age',age);
+  saveAll();
+  lsSet('hc_setup_done','1');
+  _hideSetupModal();
+  if(typeof _onGenderChange==='function')_onGenderChange();
+  updateAll();
+  if(typeof calcNavy==='function')calcNavy();
 }

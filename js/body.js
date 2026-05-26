@@ -63,6 +63,8 @@ function calcNavy(){
   const h=p.height;
   const hipGroup=document.getElementById('hip-group');
   if(hipGroup)hipGroup.style.display=p.gender==='f'?'flex':'none';
+  const wl=document.getElementById('waist-label');
+  if(wl)wl.textContent=p.gender==='f'?'TAILLE (SCHMALSTE STELLE)':'BAUCHNABEL (TAILLE)';
 
   let bf;
   if(p.gender==='m'){
@@ -297,4 +299,24 @@ function renderMeasureHistory(){
 
   html+='</div>';
   el.innerHTML=html;
+}
+
+// ════════════════════════════════════════════
+// GENDER-CHANGE HANDLER
+// ════════════════════════════════════════════
+function _onGenderChange(){
+  const g=val('p-gender');
+  const hipGroup=document.getElementById('hip-group');
+  if(g==='f'){
+    if(hipGroup)hipGroup.style.display='flex';
+    if(!val('m-neck')||parseFloat(val('m-neck'))===38)setVal('m-neck',32);
+    if(!val('m-waist')||parseFloat(val('m-waist'))===84||parseFloat(val('m-waist'))===85)setVal('m-waist',72);
+    if(!val('m-hip'))setVal('m-hip',95);
+  } else {
+    if(hipGroup)hipGroup.style.display='none';
+    if(!val('m-neck')||parseFloat(val('m-neck'))===32)setVal('m-neck',38);
+    if(!val('m-waist')||parseFloat(val('m-waist'))===72)setVal('m-waist',85);
+  }
+  saveAll();
+  calcNavy();
 }

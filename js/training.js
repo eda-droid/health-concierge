@@ -53,13 +53,38 @@ function showDayDetail(i,wt){
     rows=`<table class="workout-table">${wp.ex.map(e=>{const isBlocked=blocked.includes(e[0]);return`<tr style="${isBlocked?'opacity:.4;text-decoration:line-through;':''}">`+`<td>${e[0]}${isBlocked?' ⚠':''}</td><td>${e[1]}</td><td>${e[2]}</td></tr>`;}).join('')}</table>`;
   } else{rows='<p style="font-size:13px;color:var(--muted);">Heute: Aktive Regeneration oder Ruhetag.</p>';}
   document.getElementById('selected-workout').innerHTML=`<div class="card-label" style="margin-bottom:12px;">${daysFull[i]} — ${wp.label}</div>${rows}${blocked.length?`<p style="font-size:11px;color:var(--danger);margin-top:10px;">⚠ Gesperrt wegen Schmerzen: ${blocked.join(', ')}</p>`:''}`;
+  if(wt!=='rest'&&wt!=='recovery'){
+    logPlanDay=wt;
+    const dk=getDateKey(logDateOffset);
+    if(!logData[dk])logData[dk]={exercises:[],planDay:null};
+    applyPlanDayToLog(dk,logPlanDay);
+    renderLog();
+  }
 }
 function renderCustomWeekGrid(){
   const todayIdx=(new Date().getDay()+6)%7;
   document.getElementById('week-grid').innerHTML=customPlan.map((day,i)=>{
     const isT=i===todayIdx;
-    return`<div class="day-card${isT?' today-card':''}" onclick="editCustomDay(${i})"><div class="day-name">${daysShort[i]}</div><div class="day-type">${day.title.split(' ').slice(0,2).join(' ')}</div><span class="badge badge-blue" style="font-size:8px;padding:2px 4px;">Eigen</span></div>`;
+    return`<div class="day-card${isT?' today-card':''}" onclick="showCustomDayDetail(${i})"><div class="day-name">${daysShort[i]}</div><div class="day-type">${day.title.split(' ').slice(0,2).join(' ')}</div><span class="badge badge-blue" style="font-size:8px;padding:2px 4px;">Eigen</span></div>`;
   }).join('');
+}
+function showCustomDayDetail(dayIdx){
+  document.querySelectorAll('#week-grid .day-card').forEach((c,i)=>c.classList.toggle('today-card',i===dayIdx));
+  const day=customPlan[dayIdx];const blocked=getBlockedExercises();
+  let rows='';
+  if(day.ex.length){
+    rows=`<table class="workout-table">${day.ex.map(e=>{const isBlocked=blocked.includes(e.name);return`<tr style="${isBlocked?'opacity:.4;text-decoration:line-through;':''}">`+`<td>${e.name||'—'}${isBlocked?' ⚠':''}</td><td>${e.scheme||''}</td></tr>`;}).join('')}</table>`;
+  }else{rows='<p style="font-size:13px;color:var(--muted);">Keine Übungen eingetragen.</p>';}
+  document.getElementById('selected-workout').innerHTML=`
+    <div class="card-label" style="margin-bottom:12px;">${daysFull[dayIdx]} — ${day.title}</div>
+    ${rows}
+    ${blocked.length?`<p style="font-size:11px;color:var(--danger);margin-top:10px;">⚠ Gesperrt wegen Schmerzen: ${blocked.join(', ')}</p>`:''}
+    <button class="btn-primary" onclick="editCustomDay(${dayIdx})" style="margin-top:14px;width:100%;">✏️ Bearbeiten</button>`;
+  logPlanDay='c'+dayIdx;
+  const _dk=getDateKey(logDateOffset);
+  if(!logData[_dk])logData[_dk]={exercises:[],planDay:null};
+  applyPlanDayToLog(_dk,logPlanDay);
+  renderLog();
 }
 function editCustomDay(dayIdx){
   document.querySelectorAll('#week-grid .day-card').forEach((c,i)=>c.classList.toggle('today-card',i===dayIdx));
@@ -75,7 +100,9 @@ function editCustomDay(dayIdx){
     <div style="display:grid;grid-template-columns:1fr 90px 28px;gap:7px;margin-bottom:6px;"><span class="log-col-label" style="text-align:left;">Übung</span><span class="log-col-label">Sätze×Reps</span><span></span></div>
     ${rows}
     <button class="btn-dashed" onclick="addCustomEx(${dayIdx})" style="margin-top:8px;">+ Übung hinzufügen</button>
-    ${blocked.length?`<p style="font-size:11px;color:var(--danger);margin-top:12px;">⚠ Schmerz-Bypass: ${blocked.join(', ')}</p>`:''}`;
+    ${blocked.length?`<p style="font-size:11px;color:var(--danger);margin-top:12px;">⚠ Schmerz-Bypass: ${blocked.join(', ')}</p>`:''}
+    <button class="btn-primary" onclick="showCustomDayDetail(${dayIdx})" style="margin-top:14px;width:100%;">✓ Fertig</button>`;
+  logPlanDay='c'+dayIdx;renderLog();
 }
 function updateCustomEx(d,e,field,v){customPlan[d].ex[e][field]=v;saveCustomPlan();}
 function updateCustomDayTitle(d,v){customPlan[d].title=v;saveCustomPlan();renderCustomWeekGrid();}
@@ -87,7 +114,7 @@ function removeCustomEx(d,e){customPlan[d].ex.splice(e,1);saveCustomPlan();editC
 // ════════════════════════════════════════════
 function changeLogDate(dir){logDateOffset+=dir;if(logDateOffset>0)logDateOffset=0;logPlanDay=null;renderLog();}
 function getPlanDayOptions(){
-  if(trainingMode==='advanced'&&customPlan)return customPlan.map((d,i)=>({key:'c'+i,label:daysShort[i]+' — '+d.title,exercises:d.ex.map(e=>e.name).filter(Boolean)}));
+  if(trainingMode==='advanced'&&customPlan)return customPlan.map((d,i)=>({key:'c'+i,label:daysShort[i]+' — '+d.title,exercises:d.ex.filter(e=>e.name).map(e=>({name:e.name,scheme:e.scheme||''}))}));
   const plan=weekPlanState||getWeekPlan(75);const seen={};const opts=[];
   plan.forEach((wt,i)=>{if(wt==='rest')return;const wp=workoutPlans[wt];if(seen[wt])return;seen[wt]=1;opts.push({key:wt,label:wp.label,exercises:wp.ex.map(e=>e[0])});});
   return opts;
@@ -107,19 +134,24 @@ function renderLog(){
   if(logPlanDay==='__free')sel.value='__free';
   if(logData[dk].exercises.length===0&&logPlanDay!=='__free'){
     const opt=opts.find(o=>o.key===logPlanDay);
-    if(opt)logData[dk].exercises=opt.exercises.map(n=>({name:n,sets:[{kg:'',reps:''}],fromPlan:true}));
+    if(opt)logData[dk].exercises=opt.exercises.map(e=>{const n=typeof e==='string'?e:e.name;const sc=typeof e==='object'?e.scheme||'':'';return{name:n,scheme:sc,sets:[{kg:'',reps:''}],fromPlan:true};});
   }
   logData[dk].planDay=logPlanDay;saveLog();
   renderExercises(dk);bindSetInputs();
   renderWeekSummary();renderStrengthHistory();renderLogFeedback(dk);renderWeekFeedback();
 }
+function applyPlanDayToLog(dk,key){
+  const manual=(logData[dk].exercises||[]).filter(e=>!e.fromPlan);
+  let planEx=[];
+  if(key!=='__free'){const opt=getPlanDayOptions().find(o=>o.key===key);if(opt)planEx=opt.exercises.map(e=>{const n=typeof e==='string'?e:e.name;const sc=typeof e==='object'?e.scheme||'':'';return{name:n,scheme:sc,sets:[{kg:'',reps:''}],fromPlan:true};});}
+  logData[dk].exercises=planEx.concat(manual);
+  logData[dk].planDay=key;
+  saveLog();
+}
 function changeLogPlanDay(){
   const dk=getDateKey(logDateOffset);const newKey=document.getElementById('log-day-select').value;
   logPlanDay=newKey;
-  const manual=(logData[dk].exercises||[]).filter(e=>!e.fromPlan);
-  let planEx=[];
-  if(newKey!=='__free'){const opt=getPlanDayOptions().find(o=>o.key===newKey);if(opt)planEx=opt.exercises.map(n=>({name:n,sets:[{kg:'',reps:''}],fromPlan:true}));}
-  logData[dk].exercises=planEx.concat(manual);logData[dk].planDay=newKey;saveLog();
+  applyPlanDayToLog(dk,newKey);
   renderExercises(dk);bindSetInputs();
 }
 function renderExercises(dk){
@@ -135,6 +167,7 @@ function renderExercises(dk){
       <div class="log-ex-header">
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
           <span style="font-weight:600;font-size:14px;">${ex.name}</span>
+          ${ex.scheme?`<span style="font-size:10px;color:var(--muted);font-family:'DM Mono',monospace;">${ex.scheme}</span>`:''}
           ${isNewPR&&maxKg>0?'<span class="badge badge-yellow">🏆 PR!</span>':''}
         </div>
         <div style="display:flex;align-items:center;gap:10px;">

@@ -120,8 +120,19 @@
   <!-- Gewicht Verlauf -->
   <div class="card" id="weight-trend-card" style="display:none;">
     <div class="card-header">
-      <div class="card-label">Gewichtsverlauf</div>
-      <span id="weight-trend-badge"></span>
+      <div class="card-label" id="trend-metric-label">Gewichtsverlauf</div>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <select id="trend-metric" class="chart-select" onchange="renderWeightTrend()">
+          <option value="weight">Gewicht</option>
+          <option value="bf">KFA</option>
+          <option value="waist">Taille</option>
+          <option value="hip">Hüfte</option>
+          <option value="chest">Brust</option>
+          <option value="arm">Oberarm</option>
+          <option value="thigh">Oberschenkel</option>
+        </select>
+        <span id="weight-trend-badge"></span>
+      </div>
     </div>
     <div id="weight-trend-chart" style="display:flex;align-items:flex-end;gap:4px;height:56px;margin-bottom:6px;"></div>
     <div id="weight-trend-dates" style="display:flex;gap:4px;"></div>
@@ -330,186 +341,222 @@
 <!-- ═══════════ PROFIL & KÖRPER ═══════════ -->
 <div id="profile" class="panel">
 
-  <!-- Trainingsziel -->
-  <div class="card">
-    <div class="card-label" style="margin-bottom:14px;">Trainingsziel</div>
-    <div class="goal-selector">
-      <button class="goal-btn active-bulk" id="goal-bulk" onclick="setGoal('bulk')"><span class="goal-icon">📈</span>Bulk<span class="goal-label">+300 kcal</span></button>
-      <button class="goal-btn" id="goal-maintain" onclick="setGoal('maintain')"><span class="goal-icon">⚖️</span>Maintain<span class="goal-label">TDEE Erhalt</span></button>
-      <button class="goal-btn" id="goal-cut" onclick="setGoal('cut')"><span class="goal-icon">🔥</span>Cut<span class="goal-label">−400 kcal</span></button>
-    </div>
+  <div class="sub-tabs">
+    <button class="sub-tab" data-group="profile" data-name="profil" onclick="switchSubTab('profile','profil')">Profil</button>
+    <button class="sub-tab" data-group="profile" data-name="koerper" onclick="switchSubTab('profile','koerper')">Körper</button>
+    <button class="sub-tab" data-group="profile" data-name="zyklen" onclick="switchSubTab('profile','zyklen')">Zyklen</button>
   </div>
 
-  <!-- Körperprofil -->
-  <div class="card">
-    <div class="card-label" style="margin-bottom:14px;">Körperprofil</div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-      <div class="form-group"><label>GEWICHT (KG)</label><input type="number" id="p-weight" value="80" oninput="updateAll()"></div>
-      <div class="form-group"><label>GRÖSSE (CM)</label><input type="number" id="p-height" value="178" oninput="updateAll()"></div>
-      <div class="form-group"><label>ALTER</label><input type="number" id="p-age" value="25" oninput="updateAll()"></div>
-      <div class="form-group"><label>GESCHLECHT</label>
-        <select id="p-gender" onchange="updateAll()"><option value="m">Männlich</option><option value="f">Weiblich</option></select>
+  <!-- ── SUB: PROFIL ── -->
+  <div class="sub-panel" data-group="profile" data-name="profil">
+
+    <div class="card">
+      <div class="card-label" style="margin-bottom:14px;">Trainingsziel</div>
+      <div class="goal-selector">
+        <button class="goal-btn active-bulk" id="goal-bulk" onclick="setGoal('bulk')"><span class="goal-icon">📈</span>Bulk<span class="goal-label">+300 kcal</span></button>
+        <button class="goal-btn" id="goal-maintain" onclick="setGoal('maintain')"><span class="goal-icon">⚖️</span>Maintain<span class="goal-label">TDEE Erhalt</span></button>
+        <button class="goal-btn" id="goal-cut" onclick="setGoal('cut')"><span class="goal-icon">🔥</span>Cut<span class="goal-label">−400 kcal</span></button>
       </div>
     </div>
-  </div>
 
-  <!-- Grundumsatz -->
-  <div class="card"><div class="card-label" style="margin-bottom:12px;">Grundumsatz (Mifflin-St. Jeor)</div><div id="rmr-breakdown"></div></div>
-
-  <!-- Tagesstatus -->
-  <div class="card">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
-      <div class="card-label" style="margin-bottom:0;">Tagesstatus — Apple Watch</div>
-      <span id="lock-hint" class="locked-hint" style="display:none;">🔒 Importiert</span>
-    </div>
-    <div class="slider-row">
-      <div class="slider-header"><span class="slider-label">🌙 Schlafqualität</span><span class="slider-val" id="sleep-val">7/10</span></div>
-      <input type="range" min="1" max="10" value="7" id="sleep" oninput="updateAll()">
-    </div>
-    <div class="slider-row">
-      <div class="slider-header"><span class="slider-label">💓 HRV-Score</span><span class="slider-val" id="hrv-val">55 ms</span></div>
-      <input type="range" min="20" max="100" value="55" id="hrv" oninput="updateAll()">
-    </div>
-    <div class="slider-row">
-      <div class="slider-header"><span class="slider-label">❤️ Ruhepuls</span><span class="slider-val" id="rhr-val">58 bpm</span></div>
-      <input type="range" min="40" max="90" value="58" id="rhr" oninput="updateAll()">
-    </div>
-    <div class="slider-row">
-      <div class="slider-header"><span class="slider-label">👟 Schritte heute</span><span class="slider-val" id="steps-val">8.000</span></div>
-      <input type="range" min="0" max="25000" step="500" value="8000" id="steps" oninput="updateAll()">
-    </div>
-    <div class="slider-row" style="margin-bottom:0;">
-      <div class="slider-header"><span class="slider-label">⚡ Stresslevel</span><span class="slider-val" id="stress-val">4/10</span></div>
-      <input type="range" min="1" max="10" value="4" id="stress" oninput="updateAll()">
-    </div>
-    <button id="unlock-btn" class="btn-dashed" style="display:none;margin-top:14px;" onclick="unlockSliders()">🔓 Regler entsperren</button>
-  </div>
-
-  <!-- Sleep Quality Analysis -->
-  <div class="card" id="sleep-analysis-card">
-    <div class="card-label" style="margin-bottom:12px;">Schlafanalyse (Apple Watch)</div>
-    <div id="sleep-analysis-content">
-      <p style="font-size:12px;color:var(--muted);line-height:1.65;">Schlafphasen werden aus dem Apple-Watch-Import gelesen. Importiere deine Health-Daten um Tiefschlaf, REM und Schlafdauer zu sehen.</p>
-      <div style="margin-top:12px;display:grid;grid-template-columns:repeat(3,1fr);gap:8px;" id="sleep-phase-metrics" style="display:none;"></div>
-      <div id="sleep-quality-bar" style="margin-top:10px;display:none;">
-        <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:4px;">
-          <span>Schlafqualität</span><span id="sleep-quality-pct"></span>
+    <div class="card">
+      <div class="card-label" style="margin-bottom:14px;">Körperprofil</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div class="form-group"><label>GEWICHT (KG)</label><input type="number" id="p-weight" value="80" oninput="updateAll()"></div>
+        <div class="form-group"><label>GRÖSSE (CM)</label><input type="number" id="p-height" value="178" oninput="updateAll()"></div>
+        <div class="form-group"><label>ALTER</label><input type="number" id="p-age" value="25" oninput="updateAll()"></div>
+        <div class="form-group"><label>GESCHLECHT</label>
+          <select id="p-gender" onchange="_onGenderChange();updateAll()"><option value="m">Männlich</option><option value="f">Weiblich</option></select>
         </div>
-        <div style="height:8px;background:var(--border);border-radius:4px;overflow:hidden;">
-          <div id="sleep-quality-fill" style="height:100%;border-radius:4px;transition:width .5s;"></div>
+      </div>
+    </div>
+
+    <div class="card"><div class="card-label" style="margin-bottom:12px;">Grundumsatz (Mifflin-St. Jeor)</div><div id="rmr-breakdown"></div></div>
+
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+        <div class="card-label" style="margin-bottom:0;">Tagesstatus — Apple Watch</div>
+        <span id="lock-hint" class="locked-hint" style="display:none;">🔒 Importiert</span>
+      </div>
+      <div class="slider-row">
+        <div class="slider-header"><span class="slider-label">🌙 Schlafqualität</span><span class="slider-val" id="sleep-val">7/10</span></div>
+        <input type="range" min="1" max="10" value="7" id="sleep" oninput="updateAll()">
+      </div>
+      <div class="slider-row">
+        <div class="slider-header"><span class="slider-label">💓 HRV-Score</span><span class="slider-val" id="hrv-val">55 ms</span></div>
+        <input type="range" min="20" max="100" value="55" id="hrv" oninput="updateAll()">
+      </div>
+      <div class="slider-row">
+        <div class="slider-header"><span class="slider-label">❤️ Ruhepuls</span><span class="slider-val" id="rhr-val">58 bpm</span></div>
+        <input type="range" min="40" max="90" value="58" id="rhr" oninput="updateAll()">
+      </div>
+      <div class="slider-row">
+        <div class="slider-header"><span class="slider-label">👟 Schritte heute</span><span class="slider-val" id="steps-val">8.000</span></div>
+        <input type="range" min="0" max="25000" step="500" value="8000" id="steps" oninput="updateAll()">
+      </div>
+      <div class="slider-row" style="margin-bottom:0;">
+        <div class="slider-header"><span class="slider-label">⚡ Stresslevel</span><span class="slider-val" id="stress-val">4/10</span></div>
+        <input type="range" min="1" max="10" value="4" id="stress" oninput="updateAll()">
+      </div>
+      <button id="unlock-btn" class="btn-dashed" style="display:none;margin-top:14px;" onclick="unlockSliders()">🔓 Regler entsperren</button>
+    </div>
+
+    <div class="card" id="sleep-analysis-card">
+      <div class="card-label" style="margin-bottom:12px;">Schlafanalyse (Apple Watch)</div>
+      <div id="sleep-analysis-content">
+        <p style="font-size:12px;color:var(--muted);line-height:1.65;">Schlafphasen werden aus dem Apple-Watch-Import gelesen. Importiere deine Health-Daten um Tiefschlaf, REM und Schlafdauer zu sehen.</p>
+        <div style="margin-top:12px;display:grid;grid-template-columns:repeat(3,1fr);gap:8px;" id="sleep-phase-metrics"></div>
+        <div id="sleep-quality-bar" style="margin-top:10px;display:none;">
+          <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:4px;"><span>Schlafqualität</span><span id="sleep-quality-pct"></span></div>
+          <div style="height:8px;background:var(--border);border-radius:4px;overflow:hidden;"><div id="sleep-quality-fill" style="height:100%;border-radius:4px;transition:width .5s;"></div></div>
+          <div id="sleep-advice" style="margin-top:8px;font-size:12px;line-height:1.6;color:var(--text2);"></div>
         </div>
-        <div id="sleep-advice" style="margin-top:8px;font-size:12px;line-height:1.6;color:var(--text2);"></div>
       </div>
     </div>
-  </div>
 
-  <!-- Body Map -->
-  <div class="ai-box">
-    <div class="ai-chip">🩺 VERLETZUNGS-BYPASS</div>
-    <div>Tippe auf eine Körperstelle, wenn du dort Schmerzen hast. Die KI passt dein Training an, ohne den schmerzenden Bereich zu belasten.</div>
-  </div>
-  <div class="card">
-    <div class="card-label" style="margin-bottom:14px;">Body-Map — wo zwickt es?</div>
-    <div class="bodymap-wrap">
-      <div class="bodymap-svg">
-        <svg viewBox="0 0 160 320" xmlns="http://www.w3.org/2000/svg">
-          <ellipse cx="80" cy="28" rx="20" ry="24" fill="#1A2438" stroke="#2A3A55" class="bodypart" data-part="kopf" onclick="togglePain('kopf')"/>
-          <rect x="70" y="50" width="20" height="18" fill="#1A2438" stroke="#2A3A55" class="bodypart" data-part="nacken" onclick="togglePain('nacken')"/>
-          <circle cx="52" cy="78" r="15" fill="#1A2438" stroke="#2A3A55" class="bodypart" data-part="schulter_l" onclick="togglePain('schulter_l')"/>
-          <circle cx="108" cy="78" r="15" fill="#1A2438" stroke="#2A3A55" class="bodypart" data-part="schulter_r" onclick="togglePain('schulter_r')"/>
-          <rect x="62" y="68" width="36" height="60" rx="8" fill="#1A2438" stroke="#2A3A55" class="bodypart" data-part="brust" onclick="togglePain('brust')"/>
-          <rect x="62" y="128" width="36" height="42" rx="6" fill="#1A2438" stroke="#2A3A55" class="bodypart" data-part="ruecken" onclick="togglePain('ruecken')"/>
-          <rect x="62" y="170" width="36" height="36" rx="6" fill="#1A2438" stroke="#2A3A55" class="bodypart" data-part="unterer_ruecken" onclick="togglePain('unterer_ruecken')"/>
-          <rect x="38" y="92" width="14" height="56" rx="7" fill="#1A2438" stroke="#2A3A55" class="bodypart" data-part="arm_l" onclick="togglePain('arm_l')"/>
-          <rect x="108" y="92" width="14" height="56" rx="7" fill="#1A2438" stroke="#2A3A55" class="bodypart" data-part="arm_r" onclick="togglePain('arm_r')"/>
-          <circle cx="45" cy="156" r="9" fill="#1A2438" stroke="#2A3A55" class="bodypart" data-part="ellbogen_l" onclick="togglePain('ellbogen_l')"/>
-          <circle cx="115" cy="156" r="9" fill="#1A2438" stroke="#2A3A55" class="bodypart" data-part="ellbogen_r" onclick="togglePain('ellbogen_r')"/>
-          <rect x="63" y="206" width="16" height="62" rx="8" fill="#1A2438" stroke="#2A3A55" class="bodypart" data-part="bein_l" onclick="togglePain('bein_l')"/>
-          <rect x="81" y="206" width="16" height="62" rx="8" fill="#1A2438" stroke="#2A3A55" class="bodypart" data-part="bein_r" onclick="togglePain('bein_r')"/>
-          <circle cx="71" cy="274" r="9" fill="#1A2438" stroke="#2A3A55" class="bodypart" data-part="knie_l" onclick="togglePain('knie_l')"/>
-          <circle cx="89" cy="274" r="9" fill="#1A2438" stroke="#2A3A55" class="bodypart" data-part="knie_r" onclick="togglePain('knie_r')"/>
-        </svg>
-        <div style="font-size:10px;color:var(--muted);margin-top:8px;text-align:center;font-family:'DM Mono',monospace;">1× = leicht · 2× = stark · 3× = weg</div>
+    <div class="card">
+      <div class="card-label" style="margin-bottom:4px;">Einstellungen</div>
+      <div class="toggle-row">
+        <span style="font-size:13px;">KI fragt vor Plan-Änderungen</span>
+        <label class="toggle-wrap"><input type="checkbox" id="ask-before-change" checked onchange="saveAll()"><span class="toggle-slider"></span></label>
       </div>
-      <div class="injury-info" id="injury-info"><p style="font-size:13px;color:var(--muted);">Keine Beschwerden. Training läuft wie geplant. 💪</p></div>
-    </div>
-  </div>
-  <div class="card" id="injury-adjustment" style="display:none;"><div class="card-label" style="margin-bottom:12px;">KI-Trainingsanpassung</div><div id="injury-adjust-content"></div></div>
-
-  <!-- KFA Navy -->
-  <div class="card">
-    <div class="card-label" style="margin-bottom:8px;">Körperfettanteil — Navy-Methode</div>
-    <p style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.6;">Miss: Hals unter dem Kehlkopf, Taille an der schmalsten Stelle, Hüfte an der breitesten.</p>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;">
-      <div class="form-group"><label>HALSUMFANG (CM)</label><input type="number" id="m-neck" value="38" step="0.5" oninput="calcNavy()"></div>
-      <div class="form-group"><label>TAILLENUMFANG (CM)</label><input type="number" id="m-waist" value="84" step="0.5" oninput="calcNavy()"></div>
-      <div class="form-group" id="hip-group" style="display:none;"><label>HÜFTUMFANG (CM)</label><input type="number" id="m-hip" value="95" step="0.5" oninput="calcNavy()"></div>
-    </div>
-    <div id="navy-result"></div>
-  </div>
-
-  <!-- Körpermaße -->
-  <div class="card">
-    <div class="card-label" style="margin-bottom:14px;">Weitere Körpermaße</div>
-    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;">
-      <div class="form-group"><label>BRUST (CM)</label><input type="number" id="m-chest" value="100" step="0.5"></div>
-      <div class="form-group"><label>OBERARM (CM)</label><input type="number" id="m-arm" value="38" step="0.5"></div>
-      <div class="form-group"><label>OBERSCHENKEL (CM)</label><input type="number" id="m-thigh" value="58" step="0.5"></div>
-    </div>
-    <div id="measure-edit-banner" style="display:none;background:rgba(255,173,51,0.08);border:1px solid rgba(255,173,51,0.25);border-radius:9px;padding:10px 12px;margin-top:12px;"></div>
-    <button id="measure-save-btn" class="btn-primary" style="margin-top:12px;" onclick="saveMeasurement()">📏 Heutige Maße + KFA speichern</button>
-    <div id="measure-save-status" style="margin-top:8px;font-size:12px;"></div>
-  </div>
-
-  <div class="card"><div class="card-label" style="margin-bottom:12px;">Verlauf — gespeicherte Messungen</div><div id="measure-history"></div></div>
-
-  <!-- Deload -->
-  <div class="card">
-    <div class="card-label" style="margin-bottom:12px;">Deload-Zyklus</div>
-    <div id="deload-status"></div>
-    <button class="btn-ghost" style="margin-top:12px;width:100%;" onclick="resetDeloadCycle()">🔄 Neuen Trainingszyklus starten</button>
-  </div>
-
-  <!-- Einstellungen -->
-  <div class="card">
-    <div class="card-label" style="margin-bottom:4px;">Einstellungen</div>
-    <div class="toggle-row">
-      <span style="font-size:13px;">KI fragt vor Plan-Änderungen</span>
-      <label class="toggle-wrap">
-        <input type="checkbox" id="ask-before-change" checked onchange="saveAll()">
-        <span class="toggle-slider"></span>
-      </label>
-    </div>
-    <div class="toggle-row" style="border-bottom:none;">
-      <span style="font-size:13px;color:var(--muted);">Alle Daten löschen</span>
-      <button class="btn-ghost" style="color:var(--danger);border-color:rgba(255,87,87,0.3);" onclick="wipeAll()">Reset</button>
-    </div>
-  </div>
-
-  <!-- Apple Watch Import -->
-  <div class="card">
-    <div class="card-label" style="margin-bottom:8px;">Apple Watch Daten importieren</div>
-    <p style="font-size:12px;color:var(--muted);line-height:1.65;margin-bottom:14px;">
-      Exportiere mit <strong style="color:var(--text);">"Health Auto Export"</strong> (App Store) deine Daten als CSV/JSON. HRV, Ruhepuls, Schlaf, Schritte und <strong style="color:var(--text);">Aktive Kalorien</strong> (keine Ruheenergie) werden übernommen und sperren die Regler für heute. Am nächsten Tag ohne neuen Import werden die Regler automatisch wieder freigegeben.
-    </p>
-    <div style="margin-bottom:14px;">
-      <div style="font-size:10px;color:var(--muted);font-family:'DM Mono',monospace;letter-spacing:.07em;text-transform:uppercase;margin-bottom:8px;">Energie-Einheit in deiner Export-Datei</div>
-      <div class="mode-selector" style="margin-bottom:0;">
-        <button class="mode-btn active" id="unit-kcal" onclick="setHealthEnergyUnit('kcal')">kcal<span style="display:block;font-size:10px;font-weight:400;color:var(--muted);">direkt übernehmen</span></button>
-        <button class="mode-btn" id="unit-kj" onclick="setHealthEnergyUnit('kj')">kJ<span style="display:block;font-size:10px;font-weight:400;color:var(--muted);">÷ 4,18 → kcal</span></button>
+      <div class="toggle-row" style="border-bottom:none;">
+        <span style="font-size:13px;color:var(--muted);">Alle Daten löschen</span>
+        <button class="btn-ghost" style="color:var(--danger);border-color:rgba(255,87,87,0.3);" onclick="wipeAll()">Reset</button>
       </div>
     </div>
-    <div class="import-zone" onclick="document.getElementById('health-file').click()">
-      <div style="font-size:32px;margin-bottom:10px;">⌚</div>
-      <div style="font-size:13px;font-weight:600;">Health-Datei hochladen</div>
-      <div style="font-size:11px;color:var(--muted);margin-top:4px;">CSV oder JSON · HRV, Ruhepuls, Schlaf, Schritte, Aktive Kalorien</div>
+
+    <div class="card">
+      <div class="card-label" style="margin-bottom:8px;">Apple Watch Daten importieren</div>
+      <p style="font-size:12px;color:var(--muted);line-height:1.65;margin-bottom:14px;">Exportiere mit <strong style="color:var(--text);">"Health Auto Export"</strong> (App Store) deine Daten als CSV/JSON. HRV, Ruhepuls, Schlaf, Schritte und <strong style="color:var(--text);">Aktive Kalorien</strong> werden übernommen und sperren die Regler für heute.</p>
+      <div style="margin-bottom:14px;">
+        <div style="font-size:10px;color:var(--muted);font-family:'DM Mono',monospace;letter-spacing:.07em;text-transform:uppercase;margin-bottom:8px;">Energie-Einheit in deiner Export-Datei</div>
+        <div class="mode-selector" style="margin-bottom:0;">
+          <button class="mode-btn active" id="unit-kcal" onclick="setHealthEnergyUnit('kcal')">kcal<span style="display:block;font-size:10px;font-weight:400;color:var(--muted);">direkt übernehmen</span></button>
+          <button class="mode-btn" id="unit-kj" onclick="setHealthEnergyUnit('kj')">kJ<span style="display:block;font-size:10px;font-weight:400;color:var(--muted);">÷ 4,18 → kcal</span></button>
+        </div>
+      </div>
+      <div class="import-zone" onclick="document.getElementById('health-file').click()">
+        <div style="font-size:32px;margin-bottom:10px;">⌚</div>
+        <div style="font-size:13px;font-weight:600;">Health-Datei hochladen</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:4px;">CSV oder JSON · HRV, Ruhepuls, Schlaf, Schritte, Aktive Kalorien</div>
+      </div>
+      <input type="file" id="health-file" accept=".csv,.json" style="display:none;" onchange="importHealthFile(event)">
+      <div id="import-status" style="margin-top:10px;font-size:12px;"></div>
+      <button class="btn-ghost" style="margin-top:10px;width:100%;color:var(--danger);border-color:rgba(255,87,87,0.3);" onclick="clearTodayWatchImport()">🗑 Heutigen Watch-Import löschen</button>
     </div>
-    <input type="file" id="health-file" accept=".csv,.json" style="display:none;" onchange="importHealthFile(event)">
-    <div id="import-status" style="margin-top:10px;font-size:12px;"></div>
-    <button class="btn-ghost" style="margin-top:10px;width:100%;color:var(--danger);border-color:rgba(255,87,87,0.3);" onclick="clearTodayWatchImport()">🗑 Heutigen Watch-Import löschen</button>
-  </div>
+
+  </div><!-- /sub profil -->
+
+  <!-- ── SUB: KÖRPER ── -->
+  <div class="sub-panel" data-group="profile" data-name="koerper">
+
+    <div class="ai-box">
+      <div class="ai-chip">🩺 VERLETZUNGS-BYPASS</div>
+      <div>Tippe auf eine Körperstelle, wenn du dort Schmerzen hast. Die KI passt dein Training an, ohne den schmerzenden Bereich zu belasten.</div>
+    </div>
+    <div class="card">
+      <div class="card-label" style="margin-bottom:14px;">Body-Map — wo zwickt es?</div>
+      <div class="bodymap-wrap">
+        <div class="bodymap-svg">
+          <svg viewBox="0 0 160 320" xmlns="http://www.w3.org/2000/svg">
+            <ellipse cx="80" cy="28" rx="20" ry="24" fill="#1A2438" stroke="#2A3A55" class="bodypart" data-part="kopf" onclick="togglePain('kopf')"/>
+            <rect x="70" y="50" width="20" height="18" fill="#1A2438" stroke="#2A3A55" class="bodypart" data-part="nacken" onclick="togglePain('nacken')"/>
+            <circle cx="52" cy="78" r="15" fill="#1A2438" stroke="#2A3A55" class="bodypart" data-part="schulter_l" onclick="togglePain('schulter_l')"/>
+            <circle cx="108" cy="78" r="15" fill="#1A2438" stroke="#2A3A55" class="bodypart" data-part="schulter_r" onclick="togglePain('schulter_r')"/>
+            <rect x="62" y="68" width="36" height="60" rx="8" fill="#1A2438" stroke="#2A3A55" class="bodypart" data-part="brust" onclick="togglePain('brust')"/>
+            <rect x="62" y="128" width="36" height="42" rx="6" fill="#1A2438" stroke="#2A3A55" class="bodypart" data-part="ruecken" onclick="togglePain('ruecken')"/>
+            <rect x="62" y="170" width="36" height="36" rx="6" fill="#1A2438" stroke="#2A3A55" class="bodypart" data-part="unterer_ruecken" onclick="togglePain('unterer_ruecken')"/>
+            <rect x="38" y="92" width="14" height="56" rx="7" fill="#1A2438" stroke="#2A3A55" class="bodypart" data-part="arm_l" onclick="togglePain('arm_l')"/>
+            <rect x="108" y="92" width="14" height="56" rx="7" fill="#1A2438" stroke="#2A3A55" class="bodypart" data-part="arm_r" onclick="togglePain('arm_r')"/>
+            <circle cx="45" cy="156" r="9" fill="#1A2438" stroke="#2A3A55" class="bodypart" data-part="ellbogen_l" onclick="togglePain('ellbogen_l')"/>
+            <circle cx="115" cy="156" r="9" fill="#1A2438" stroke="#2A3A55" class="bodypart" data-part="ellbogen_r" onclick="togglePain('ellbogen_r')"/>
+            <rect x="63" y="206" width="16" height="62" rx="8" fill="#1A2438" stroke="#2A3A55" class="bodypart" data-part="bein_l" onclick="togglePain('bein_l')"/>
+            <rect x="81" y="206" width="16" height="62" rx="8" fill="#1A2438" stroke="#2A3A55" class="bodypart" data-part="bein_r" onclick="togglePain('bein_r')"/>
+            <circle cx="71" cy="274" r="9" fill="#1A2438" stroke="#2A3A55" class="bodypart" data-part="knie_l" onclick="togglePain('knie_l')"/>
+            <circle cx="89" cy="274" r="9" fill="#1A2438" stroke="#2A3A55" class="bodypart" data-part="knie_r" onclick="togglePain('knie_r')"/>
+          </svg>
+          <div style="font-size:10px;color:var(--muted);margin-top:8px;text-align:center;font-family:'DM Mono',monospace;">1× = leicht · 2× = stark · 3× = weg</div>
+        </div>
+        <div class="injury-info" id="injury-info"><p style="font-size:13px;color:var(--muted);">Keine Beschwerden. Training läuft wie geplant. 💪</p></div>
+      </div>
+    </div>
+    <div class="card" id="injury-adjustment" style="display:none;"><div class="card-label" style="margin-bottom:12px;">KI-Trainingsanpassung</div><div id="injury-adjust-content"></div></div>
+
+    <div class="card">
+      <div class="card-label" style="margin-bottom:8px;">Körperfettanteil — Navy-Methode</div>
+      <p style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.6;">Miss: Hals unter dem Kehlkopf, Taille an der schmalsten Stelle, Hüfte an der breitesten.</p>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;">
+        <div class="form-group"><label>HALSUMFANG (CM)</label><input type="number" id="m-neck" value="38" step="0.5" oninput="calcNavy()"></div>
+        <div class="form-group"><label id="waist-label">BAUCHNABEL (TAILLE)</label><input type="number" id="m-waist" value="84" step="0.5" oninput="calcNavy()"></div>
+        <div class="form-group" id="hip-group" style="display:none;"><label>HÜFTUMFANG (CM)</label><input type="number" id="m-hip" value="95" step="0.5" oninput="calcNavy()"></div>
+      </div>
+      <div id="navy-result"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-label" style="margin-bottom:14px;">Weitere Körpermaße</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;">
+        <div class="form-group"><label>BRUST (CM)</label><input type="number" id="m-chest" value="100" step="0.5"></div>
+        <div class="form-group"><label>OBERARM (CM)</label><input type="number" id="m-arm" value="38" step="0.5"></div>
+        <div class="form-group"><label>OBERSCHENKEL (CM)</label><input type="number" id="m-thigh" value="58" step="0.5"></div>
+      </div>
+      <div id="measure-edit-banner" style="display:none;background:rgba(255,173,51,0.08);border:1px solid rgba(255,173,51,0.25);border-radius:9px;padding:10px 12px;margin-top:12px;"></div>
+      <button id="measure-save-btn" class="btn-primary" style="margin-top:12px;" onclick="saveMeasurement()">📏 Heutige Maße + KFA speichern</button>
+      <div id="measure-save-status" style="margin-top:8px;font-size:12px;"></div>
+    </div>
+
+    <div class="card"><div class="card-label" style="margin-bottom:12px;">Verlauf — gespeicherte Messungen</div><div id="measure-history"></div></div>
+
+  </div><!-- /sub koerper -->
+
+  <!-- ── SUB: ZYKLEN ── -->
+  <div class="sub-panel" data-group="profile" data-name="zyklen">
+
+    <div class="card">
+      <div class="card-label" style="margin-bottom:12px;">Deload-Zyklus</div>
+      <div id="deload-status"></div>
+      <button class="btn-ghost" style="margin-top:12px;width:100%;" onclick="resetDeloadCycle()">🔄 Neuen Trainingszyklus starten</button>
+    </div>
+
+  </div><!-- /sub zyklen -->
+
 </div>
 </div><!-- /app -->
+
+<!-- SETUP MODAL -->
+<div class="modal-overlay" id="setup-modal-overlay" style="display:none;align-items:center;justify-content:center;">
+  <div class="modal" style="max-width:360px;width:100%;">
+    <div style="text-align:center;margin-bottom:20px;">
+      <div style="width:44px;height:44px;background:var(--accent-dim);border-radius:12px;display:flex;align-items:center;justify-content:center;margin:0 auto 12px;font-size:22px;">🏋️</div>
+      <div class="modal-title" style="font-size:18px;">Willkommen bei Vitale</div>
+      <div class="modal-sub" style="margin-bottom:0;">Kurz dein Profil anlegen — dauert 30 Sekunden.</div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+      <div class="form-group" style="grid-column:1/-1;">
+        <label>Geschlecht</label>
+        <select id="setup-gender" style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:9px 11px;color:var(--text);font-size:13px;font-family:'DM Sans',sans-serif;outline:none;transition:border-color .18s;" onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'">
+          <option value="m">Männlich</option>
+          <option value="f">Weiblich</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Gewicht (kg)</label>
+        <input type="number" id="setup-weight" placeholder="80" inputmode="decimal" min="30" max="250" style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:9px 11px;color:var(--text);font-size:14px;font-family:'DM Mono',monospace;outline:none;text-align:center;width:100%;transition:border-color .18s;" onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'">
+      </div>
+      <div class="form-group">
+        <label>Größe (cm)</label>
+        <input type="number" id="setup-height" placeholder="180" inputmode="numeric" min="140" max="220" style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:9px 11px;color:var(--text);font-size:14px;font-family:'DM Mono',monospace;outline:none;text-align:center;width:100%;transition:border-color .18s;" onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'">
+      </div>
+      <div class="form-group" style="grid-column:1/-1;">
+        <label>Alter</label>
+        <input type="number" id="setup-age" placeholder="25" inputmode="numeric" min="14" max="99" style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:9px 11px;color:var(--text);font-size:14px;font-family:'DM Mono',monospace;outline:none;text-align:center;width:100%;transition:border-color .18s;" onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'">
+      </div>
+    </div>
+    <div id="setup-error" style="font-size:12px;color:var(--danger);min-height:16px;margin-bottom:8px;"></div>
+    <button class="btn-primary" style="width:100%;padding:13px;" onclick="_submitSetup()">Los geht's →</button>
+  </div>
+</div>
 
 <!-- MODAL -->
 <div class="modal-overlay" id="modal-overlay">

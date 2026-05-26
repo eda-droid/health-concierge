@@ -12,6 +12,7 @@
 // INIT
 // ════════════════════════════════════════════
 loadState();
+if(!lsGet('hc_setup_done',null))_showSetupModal();
 
 // Tagesgebundener Watch-Import: bei neuem Tag Lock und Metadaten zurücksetzen
 if(lastHealthImportDate&&lastHealthImportDate!==getTodayKey()){
@@ -25,9 +26,9 @@ updateAll();
 renderLog();
 bindSetInputs();
 renderDeloadStatus();
-calcNavy();
 renderMeasureHistory();
 applyVitDCollapse();
 renderInjury();
 setHealthEnergyUnit(healthEnergyUnit);
 renderImportStatus();
+document.addEventListener('DOMContentLoaded',function(){calcNavy();_initSubTabs('profile','profil');});
