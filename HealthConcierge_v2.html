@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vitale — KI Health Coach</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="app">
+
+<!-- HEADER -->
+<header>
+  <div class="logo">
+    <div class="logo-mark">Ai</div>
+    <div>
+      <div class="logo-name">Vi<span>tale</span></div>
+      <div class="logo-tagline">KI · Muskelaufbau · Apple Watch</div>
+    </div>
+  </div>
+  <div class="status-pill"><div class="pulse"></div><span>KI aktiv</span></div>
+</header>
+
+<!-- TABS -->
+<div class="nav-tabs">
+  <button class="tab active" onclick="switchTab('home',this)"><span class="tab-icon">⚡</span>Heute</button>
+  <button class="tab" onclick="switchTab('training',this)"><span class="tab-icon">🏋️</span>Training</button>
+  <button class="tab" onclick="switchTab('nutrition',this)"><span class="tab-icon">🥗</span>Ernährung</button>
+  <button class="tab" onclick="switchTab('profile',this)"><span class="tab-icon">👤</span>Profil & Körper</button>
+</div>
+
+<!-- ═══════════ HEUTE ═══════════ -->
+<div id="home" class="panel active">
+  <div id="deload-banner-slot"></div>
+
+  <div class="dash-hero">
+    <div class="dash-greet" id="dash-greet">Dein Tag im Überblick</div>
+    <div class="dash-training" id="dash-training">Hypertrophie · Push</div>
+    <div class="dash-training-sub" id="dash-training-sub">Schwere Session — heute ist Brust + Trizeps dran</div>
+  </div>
+
+  <!-- Recovery + Gesundheit -->
+  <div class="grid2" style="margin-bottom:14px;">
+    <div class="card expandable" onclick="toggleExpand('recovery-expand')">
+      <div class="card-header" style="margin-bottom:10px;">
+        <div class="card-label">Recovery Score</div>
+        <span class="collapse-arrow" id="recovery-arrow">▾</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:14px;">
+        <div class="recovery-ring">
+          <svg viewBox="0 0 88 88"><circle cx="44" cy="44" r="36" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="7"/><circle cx="44" cy="44" r="36" fill="none" stroke="#00E5A0" stroke-width="7" stroke-linecap="round" stroke-dasharray="226" stroke-dashoffset="56" id="recovery-circle"/></svg>
+          <div class="recovery-ring-val" id="recovery-score" style="color:var(--accent);">72</div>
+        </div>
+        <div>
+          <div id="recovery-badge"><span class="badge badge-green">Optimal</span></div>
+          <div style="font-size:11px;color:var(--muted);margin-top:6px;">Tippen für Details</div>
+        </div>
+      </div>
+      <div class="expand-body" id="recovery-expand">
+        <div class="stat-row"><span class="sr-label">🌙 Schlaf</span><span class="sr-val" id="dx-sleep">7 / 10</span></div>
+        <div class="stat-row"><span class="sr-label">💓 HRV</span><span class="sr-val" id="dx-hrv">55 ms</span></div>
+        <div class="stat-row"><span class="sr-label">❤️ Ruhepuls</span><span class="sr-val" id="dx-rhr">58 bpm</span></div>
+        <div class="stat-row"><span class="sr-label">👟 Schritte</span><span class="sr-val" id="dx-steps">8.000</span></div>
+        <div class="stat-row"><span class="sr-label">⚡ Stress</span><span class="sr-val" id="dx-stress">4 / 10</span></div>
+        <div style="font-size:11px;color:var(--muted);margin-top:8px;">Im Tab "Profil & Körper" → Status anpassen.</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-label" style="margin-bottom:12px;">Vitalzeichen</div>
+      <div style="text-align:center;padding:6px 0;">
+        <div style="font-size:28px;font-weight:700;letter-spacing:-0.02em;" id="health-val">Gut</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:4px;" id="health-sub">stabil</div>
+      </div>
+      <div class="stat-row" style="margin-top:8px;"><span class="sr-label">Ruhepuls</span><span class="sr-val" id="dh-rhr">58 bpm</span></div>
+      <div class="stat-row"><span class="sr-label">HRV</span><span class="sr-val" id="dh-hrv">55 ms</span></div>
+    </div>
+  </div>
+
+  <!-- Kalorien (burned = Info-only, bereits im TDEE-Ziel enthalten) -->
+  <div class="card">
+    <div class="card-label" style="margin-bottom:12px;">Energie-Bilanz heute</div>
+    <div class="kcal-bar" id="kcal-bar">
+      <div style="width:60%;background:var(--accent);border-radius:6px 0 0 6px;"></div>
+      <div style="width:40%;background:var(--border);border-radius:0 6px 6px 0;"></div>
+    </div>
+    <div class="grid4" style="margin-top:12px;">
+      <div class="metric"><div class="metric-label">Ziel</div><div class="metric-value" id="k-goal" style="font-size:18px;color:var(--accent);">2480</div><div class="metric-unit">kcal</div></div>
+      <div class="metric"><div class="metric-label">Gegessen</div><div class="metric-value" id="k-eaten" style="font-size:18px;">0</div><div class="metric-unit">kcal</div></div>
+      <div class="metric"><div class="metric-label">⌚ Aktive Kalorien</div><div class="metric-value" id="k-burned" style="font-size:18px;color:var(--warn);">—</div><div class="metric-unit">kcal</div></div>
+      <div class="metric"><div class="metric-label">Verbleibend</div><div class="metric-value" id="k-remain" style="font-size:18px;color:var(--info);">2480</div><div class="metric-unit">kcal</div></div>
+    </div>
+    <p style="font-size:11px;color:var(--muted);margin-top:10px;line-height:1.6;">Verbleibend = Ziel − Gegessen. ⌚ Aktive Kalorien (Watch) sind nur zur Info — der Trainingsverbrauch ist bereits im Tagesziel eingerechnet. Mahlzeiten im Tab Ernährung eintragen.</p>
+  </div>
+
+  <!-- Wasser -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-label">Wasser</div>
+      <div style="display:flex;align-items:baseline;gap:4px;">
+        <span style="font-size:20px;font-weight:700;color:var(--water);" id="water-amount">0,0 L</span>
+        <span style="font-size:11px;color:var(--muted);" id="water-goal-lbl">/ 2,8 L</span>
+      </div>
+    </div>
+    <div class="water-glass-row" id="water-glasses"></div>
+    <div style="display:flex;gap:8px;margin-top:10px;">
+      <button class="water-btn" onclick="addWater(200)">+ Glas 200ml</button>
+      <button class="water-btn" onclick="addWater(500)" style="background:rgba(56,196,245,0.7);">+ Flasche 500ml</button>
+      <button class="water-btn minus-btn" onclick="addWater(-200)">−</button>
+    </div>
+  </div>
+
+  <!-- Wochenverlauf Mini -->
+  <div class="card">
+    <div class="card-label" style="margin-bottom:12px;">Diese Woche</div>
+    <div class="day-mini" id="week-mini"></div>
+  </div>
+
+  <!-- Gewicht Verlauf -->
+  <div class="card" id="weight-trend-card" style="display:none;">
+    <div class="card-header">
+      <div class="card-label">Gewichtsverlauf</div>
+      <span id="weight-trend-badge"></span>
+    </div>
+    <div id="weight-trend-chart" style="display:flex;align-items:flex-end;gap:4px;height:56px;margin-bottom:6px;"></div>
+    <div id="weight-trend-dates" style="display:flex;gap:4px;"></div>
+    <div style="font-size:11px;color:var(--muted);margin-top:8px;" id="weight-trend-note"></div>
+  </div>
+
+  <!-- KI Analyse -->
+  <div class="ai-box"><div class="ai-chip">⚡ KI ANALYSE</div><div id="ai-recommendation">Berechne...</div></div>
+</div>
+
+<!-- ═══════════ TRAINING ═══════════ -->
+<div id="training" class="panel">
+
+  <!-- Wochenplan -->
+  <div class="card">
+    <div class="card-label" style="margin-bottom:12px;">Trainingsplan-Modus</div>
+    <div class="mode-selector">
+      <button class="mode-btn active" id="mode-beginner" onclick="setTrainingMode('beginner')">🌱 Einsteiger<br><span style="font-weight:400;font-size:10px;color:var(--muted);">KI-Vorschlagsplan</span></button>
+      <button class="mode-btn" id="mode-advanced" onclick="setTrainingMode('advanced')">🏋️ Fortgeschritten<br><span style="font-weight:400;font-size:10px;color:var(--muted);">Eigener Plan</span></button>
+    </div>
+    <p id="mode-desc" style="font-size:12px;color:var(--muted);line-height:1.6;">Im Einsteiger-Modus erstellt die KI automatisch einen Push/Pull/Legs-Plan basierend auf deiner Recovery.</p>
+  </div>
+
+  <div class="ai-box"><div class="ai-chip">📅 KI WOCHENPLAN</div><div id="week-status">Berechne...</div></div>
+  <div class="week-grid" id="week-grid"></div>
+  <div class="card" id="selected-workout"><div class="card-label">Wochenplan</div><p style="font-size:13px;color:var(--muted);">Tippe auf einen Tag für Details.</p></div>
+
+  <!-- Log -->
+  <div class="card" style="margin-top:16px;">
+    <div class="card-header">
+      <div class="card-label">Trainings-Log</div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <button class="btn-ghost" onclick="changeLogDate(-1)">◀</button>
+        <span class="log-date-lbl" id="log-date-label">Heute</span>
+        <button class="btn-ghost" onclick="changeLogDate(1)">▶</button>
+      </div>
+    </div>
+    <div class="form-group" style="margin-bottom:12px;">
+      <label>WELCHE EINHEIT?</label>
+      <select id="log-day-select" onchange="changeLogPlanDay()"></select>
+    </div>
+  </div>
+
+  <!-- Wochenbilanz -->
+  <div class="card">
+    <div class="card-label" style="margin-bottom:12px;">Wochenbilanz (7 Tage)</div>
+    <div class="week-summary-grid">
+      <div class="summary-card"><div class="summary-val" id="wb-sessions" style="color:var(--accent);">0</div><div class="summary-label">Sessions</div></div>
+      <div class="summary-card"><div class="summary-val" id="wb-volume" style="color:var(--info);">0t</div><div class="summary-label">Gesamtvolumen</div></div>
+      <div class="summary-card"><div class="summary-val" id="wb-pr" style="color:var(--warn);">0</div><div class="summary-label">Neue PRs</div></div>
+    </div>
+    <div id="wb-progress-bars"></div>
+  </div>
+
+  <!-- Muskelgruppen Volumen & Sätze -->
+  <div class="card">
+    <div class="card-label" style="margin-bottom:12px;">Muskelgruppen — Volumen &amp; Sätze (7 Tage)</div>
+    <div id="muscle-group-stats"><p style="font-size:12px;color:var(--muted);">Trage Kraftwerte ein.</p></div>
+  </div>
+
+  <div class="card">
+    <div class="card-label" style="margin-bottom:12px;">Kalorien- & Trainings-Wochenfeedback</div>
+    <div class="ai-box" style="margin-bottom:0;"><div class="ai-chip">📊 WOCHENREVIEW</div><div id="week-feedback">Sammle Daten...</div></div>
+  </div>
+
+  <!-- Kraftwerte Log -->
+  <div class="card">
+    <div class="card-label" style="margin-bottom:12px;">Kraftwerte eintragen</div>
+    <div id="exercise-log-list"></div>
+    <button class="btn-dashed" onclick="addExercise()" style="margin-top:10px;">+ Extra-Übung hinzufügen</button>
+  </div>
+
+  <div class="card">
+    <div class="card-label" style="margin-bottom:12px;">KI Feedback & Steigerung (heute)</div>
+    <div class="ai-box" style="margin-bottom:0;"><div class="ai-chip">🤖 KI FEEDBACK</div><div id="log-ai-feedback">Trage Werte ein...</div></div>
+  </div>
+
+  <div class="card">
+    <div class="card-label" style="margin-bottom:12px;">Kraftentwicklung — Letzte 2 Wochen</div>
+    <div id="strength-history"></div>
+  </div>
+</div>
+
+<!-- ═══════════ ERNÄHRUNG ═══════════ -->
+<div id="nutrition" class="panel">
+  <div class="card" id="weekly-review-card"></div>
+
+  <div class="card">
+    <div class="card-label" style="margin-bottom:12px;">Kalorien heute</div>
+    <div class="grid3" style="margin-bottom:14px;">
+      <div class="metric"><div class="metric-label">Tagesziel</div><div class="metric-value" id="n-goal" style="font-size:19px;color:var(--accent);">2480</div><div class="metric-unit" id="n-goal-label">kcal Bulk</div></div>
+      <div class="metric"><div class="metric-label">Gegessen</div><div class="metric-value" id="n-eaten" style="font-size:19px;">0</div><div class="metric-unit">kcal</div></div>
+      <div class="metric"><div class="metric-label">Verbleibend</div><div class="metric-value" id="n-remain" style="font-size:19px;color:var(--info);">2480</div><div class="metric-unit">kcal</div></div>
+    </div>
+
+    <!-- Makro-Schnelleingabe -->
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:12px;">
+      <div style="font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;letter-spacing:.07em;text-transform:uppercase;margin-bottom:10px;">Mahlzeit eintragen</div>
+      <div class="form-group" style="margin-bottom:8px;">
+        <label>BEZEICHNUNG (optional)</label>
+        <input type="text" id="meal-name-input" placeholder="z.B. Frühstück, Hähnchen mit Reis..." style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:8px 11px;color:var(--text);font-size:13px;outline:none;font-family:'DM Sans',sans-serif;width:100%;transition:border-color .18s;" onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'">
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:10px;">
+        <div class="form-group">
+          <label>KCAL</label>
+          <input type="number" id="meal-kcal" placeholder="650" inputmode="numeric" min="0" style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:8px;color:var(--text);font-size:14px;font-family:'DM Mono',monospace;outline:none;text-align:center;width:100%;transition:border-color .18s;" onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border)'">
+        </div>
+        <div class="form-group">
+          <label style="color:var(--info);">PROTEIN g</label>
+          <input type="number" id="meal-protein" placeholder="40" inputmode="numeric" min="0" style="background:var(--card);border:1px solid rgba(91,127,255,0.3);border-radius:8px;padding:8px;color:var(--text);font-size:14px;font-family:'DM Mono',monospace;outline:none;text-align:center;width:100%;transition:border-color .18s;" onfocus="this.style.borderColor='var(--info)'" onblur="this.style.borderColor='rgba(91,127,255,0.3)'">
+        </div>
+        <div class="form-group">
+          <label style="color:var(--warn);">CARBS g</label>
+          <input type="number" id="meal-carbs" placeholder="70" inputmode="numeric" min="0" style="background:var(--card);border:1px solid rgba(255,173,51,0.3);border-radius:8px;padding:8px;color:var(--text);font-size:14px;font-family:'DM Mono',monospace;outline:none;text-align:center;width:100%;transition:border-color .18s;" onfocus="this.style.borderColor='var(--warn)'" onblur="this.style.borderColor='rgba(255,173,51,0.3)'">
+        </div>
+        <div class="form-group">
+          <label style="color:#EC4899;">FETT g</label>
+          <input type="number" id="meal-fat" placeholder="15" inputmode="numeric" min="0" style="background:var(--card);border:1px solid rgba(236,72,153,0.3);border-radius:8px;padding:8px;color:var(--text);font-size:14px;font-family:'DM Mono',monospace;outline:none;text-align:center;width:100%;transition:border-color .18s;" onfocus="this.style.borderColor='#EC4899'" onblur="this.style.borderColor='rgba(236,72,153,0.3)'">
+        </div>
+      </div>
+      <div style="font-size:10px;color:var(--muted);margin-bottom:8px;font-family:'DM Mono',monospace;" id="meal-auto-kcal"></div>
+      <div id="template-edit-banner" style="display:none;background:rgba(0,229,160,0.08);border:1px solid rgba(0,229,160,0.25);border-radius:8px;padding:8px 12px;margin-bottom:8px;font-size:12px;color:var(--accent);">✎ Template wird bearbeitet — Werte anpassen und speichern.</div>
+      <div style="display:grid;grid-template-columns:1fr auto;gap:8px;">
+        <button class="btn-primary" onclick="addMeal()">+ Mahlzeit eintragen</button>
+        <button id="template-save-btn" class="btn-ghost" style="font-size:13px;white-space:nowrap;" onclick="saveMealAsTemplate()">Als Template speichern</button>
+      </div>
+      <button id="template-cancel-btn" class="btn-ghost" style="display:none;font-size:11px;color:var(--muted);margin-top:4px;" onclick="cancelEditTemplate()">Abbrechen</button>
+      <div id="template-status" style="margin-top:6px;font-size:11px;min-height:16px;"></div>
+    </div>
+
+    <div id="meal-log-list"></div>
+  </div>
+
+  <!-- Gespeicherte Meal Templates -->
+  <div class="card">
+    <div class="card-label" style="margin-bottom:12px;">Gespeicherte Meals</div>
+    <div id="meal-templates-list"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-label" style="margin-bottom:12px;">Makro-Verteilung (zielangepasst)</div>
+    <div class="macro-bar" id="macro-bar"><div style="width:33%;background:var(--info);border-radius:4px 0 0 4px;"></div><div style="width:42%;background:var(--warn);"></div><div style="width:25%;background:#EC4899;border-radius:0 4px 4px 0;"></div></div>
+    <div style="display:flex;gap:14px;font-size:11px;margin-bottom:14px;font-family:'DM Mono',monospace;">
+      <span style="color:var(--info);">■ Protein</span>
+      <span style="color:var(--warn);">■ Kohlenhydrate</span>
+      <span style="color:#EC4899;">■ Fett</span>
+    </div>
+    <div id="macro-details"></div>
+  </div>
+
+  <div class="grid2">
+    <div class="card"><div class="card-label" style="margin-bottom:12px;">Mahlzeiten-Timing</div><div id="meal-timing"></div></div>
+    <div class="card"><div class="card-label" style="margin-bottom:12px;">Kalorienaufschlüsselung</div><div id="calorie-breakdown"></div></div>
+  </div>
+
+  <!-- Vitamin D -->
+  <div class="card">
+    <div class="collapse-head" onclick="toggleVitD()">
+      <div class="card-label" style="margin-bottom:0;">Vitamin D₃ Rechner <span id="vitd-summary-inline" style="color:var(--accent);text-transform:none;letter-spacing:0;font-weight:400;font-size:11px;"></span></div>
+      <span class="collapse-arrow open" id="vitd-arrow">▾</span>
+    </div>
+    <div id="vitd-body" style="margin-top:14px;">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+        <div class="form-group"><label>HAUTTYP</label>
+          <select id="vd-skin"><option value="1">Sehr hell (Typ I–II)</option><option value="2" selected>Mittel (Typ III–IV)</option><option value="3">Dunkel (Typ V–VI)</option></select>
+        </div>
+        <div class="form-group"><label>SONNENSTUNDEN / TAG</label>
+          <select id="vd-sun"><option value="0">Kein Sonnenlicht</option><option value="15">~15 Min</option><option value="30" selected>~30 Min</option><option value="60">~1 Stunde</option><option value="120">2+ Stunden</option></select>
+        </div>
+        <div class="form-group"><label>JAHRESZEIT / STANDORT</label>
+          <select id="vd-season"><option value="0.1">Winter in DE</option><option value="0.4">Frühling/Herbst DE</option><option value="0.8" selected>Sommer DE</option><option value="1.0">Südeuropa</option></select>
+        </div>
+        <div class="form-group"><label>BLUTWERT 25-OH-D (ng/mL) · 0=unbekannt</label>
+          <input type="number" id="vd-level" value="0" min="0" max="100">
+        </div>
+      </div>
+      <button class="btn-primary" onclick="calcVitDAndCollapse()">✓ Berechnen & einklappen</button>
+      <div id="vitd-result" style="margin-top:14px;"></div>
+    </div>
+  </div>
+
+  <!-- Wochenbilanz Ernährung -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-label">Wochenbilanz Ernährung (7 Tage)</div>
+      <span style="font-size:10px;color:var(--muted);font-family:'DM Mono',monospace;">Mo–So</span>
+    </div>
+    <div id="weekly-nutrition-summary">
+      <p style="font-size:12px;color:var(--muted);">Trage täglich Mahlzeiten ein für die Wochenbilanz.</p>
+    </div>
+  </div>
+
+  <!-- Periodisierungs-Check -->
+  <div class="card" id="periodization-card" style="display:none;">
+    <div class="card-label" style="margin-bottom:12px;">Periodisierungs-Check (KI)</div>
+    <div id="periodization-content"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-label" style="margin-bottom:12px;">Supplement-Stack</div>
+    <div id="supps"></div>
+  </div>
+</div>
+
+<!-- ═══════════ PROFIL & KÖRPER ═══════════ -->
+<div id="profile" class="panel">
+
+  <!-- Trainingsziel -->
+  <div class="card">
+    <div class="card-label" style="margin-bottom:14px;">Trainingsziel</div>
+    <div class="goal-selector">
+      <button class="goal-btn active-bulk" id="goal-bulk" onclick="setGoal('bulk')"><span class="goal-icon">📈</span>Bulk<span class="goal-label">+300 kcal</span></button>
+      <button class="goal-btn" id="goal-maintain" onclick="setGoal('maintain')"><span class="goal-icon">⚖️</span>Maintain<span class="goal-label">TDEE Erhalt</span></button>
+      <button class="goal-btn" id="goal-cut" onclick="setGoal('cut')"><span class="goal-icon">🔥</span>Cut<span class="goal-label">−400 kcal</span></button>
+    </div>
+  </div>
+
+  <!-- Körperprofil -->
+  <div class="card">
+    <div class="card-label" style="margin-bottom:14px;">Körperprofil</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+      <div class="form-group"><label>GEWICHT (KG)</label><input type="number" id="p-weight" value="80" oninput="updateAll()"></div>
+      <div class="form-group"><label>GRÖSSE (CM)</label><input type="number" id="p-height" value="178" oninput="updateAll()"></div>
+      <div class="form-group"><label>ALTER</label><input type="number" id="p-age" value="25" oninput="updateAll()"></div>
+      <div class="form-group"><label>GESCHLECHT</label>
+        <select id="p-gender" onchange="updateAll()"><option value="m">Männlich</option><option value="f">Weiblich</option></select>
+      </div>
+    </div>
+  </div>
+
+  <!-- Grundumsatz -->
+  <div class="card"><div class="card-label" style="margin-bottom:12px;">Grundumsatz (Mifflin-St. Jeor)</div><div id="rmr-breakdown"></div></div>
+
+  <!-- Tagesstatus -->
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+      <div class="card-label" style="margin-bottom:0;">Tagesstatus — Apple Watch</div>
+      <span id="lock-hint" class="locked-hint" style="display:none;">🔒 Importiert</span>
+    </div>
+    <div class="slider-row">
+      <div class="slider-header"><span class="slider-label">🌙 Schlafqualität</span><span class="slider-val" id="sleep-val">7/10</span></div>
+      <input type="range" min="1" max="10" value="7" id="sleep" oninput="updateAll()">
+    </div>
+    <div class="slider-row">
+      <div class="slider-header"><span class="slider-label">💓 HRV-Score</span><span class="slider-val" id="hrv-val">55 ms</span></div>
+      <input type="range" min="20" max="100" value="55" id="hrv" oninput="updateAll()">
+    </div>
+    <div class="slider-row">
+      <div class="slider-header"><span class="slider-label">❤️ Ruhepuls</span><span class="slider-val" id="rhr-val">58 bpm</span></div>
+      <input type="range" min="40" max="90" value="58" id="rhr" oninput="updateAll()">
+    </div>
+    <div class="slider-row">
+      <div class="slider-header"><span class="slider-label">👟 Schritte heute</span><span class="slider-val" id="steps-val">8.000</span></div>
+      <input type="range" min="0" max="25000" step="500" value="8000" id="steps" oninput="updateAll()">
+    </div>
+    <div class="slider-row" style="margin-bottom:0;">
+      <div class="slider-header"><span class="slider-label">⚡ Stresslevel</span><span class="slider-val" id="stress-val">4/10</span></div>
+      <input type="range" min="1" max="10" value="4" id="stress" oninput="updateAll()">
+    </div>
+    <button id="unlock-btn" class="btn-dashed" style="display:none;margin-top:14px;" onclick="unlockSliders()">🔓 Regler entsperren</button>
+  </div>
+
+  <!-- Sleep Quality Analysis -->
+  <div class="card" id="sleep-analysis-card">
+    <div class="card-label" style="margin-bottom:12px;">Schlafanalyse (Apple Watch)</div>
+    <div id="sleep-analysis-content">
+      <p style="font-size:12px;color:var(--muted);line-height:1.65;">Schlafphasen werden aus dem Apple-Watch-Import gelesen. Importiere deine Health-Daten um Tiefschlaf, REM und Schlafdauer zu sehen.</p>
+      <div style="margin-top:12px;display:grid;grid-template-columns:repeat(3,1fr);gap:8px;" id="sleep-phase-metrics" style="display:none;"></div>
+      <div id="sleep-quality-bar" style="margin-top:10px;display:none;">
+        <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:4px;">
+          <span>Schlafqualität</span><span id="sleep-quality-pct"></span>
+        </div>
+        <div style="height:8px;background:var(--border);border-radius:4px;overflow:hidden;">
+          <div id="sleep-quality-fill" style="height:100%;border-radius:4px;transition:width .5s;"></div>
+        </div>
+        <div id="sleep-advice" style="margin-top:8px;font-size:12px;line-height:1.6;color:var(--text2);"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Body Map -->
+  <div class="ai-box">
+    <div class="ai-chip">🩺 VERLETZUNGS-BYPASS</div>
+    <div>Tippe auf eine Körperstelle, wenn du dort Schmerzen hast. Die KI passt dein Training an, ohne den schmerzenden Bereich zu belasten.</div>
+  </div>
+  <div class="card">
+    <div class="card-label" style="margin-bottom:14px;">Body-Map — wo zwickt es?</div>
+    <div class="bodymap-wrap">
+      <div class="bodymap-svg">
+        <svg viewBox="0 0 160 320" xmlns="http://www.w3.org/2000/svg">
+          <ellipse cx="80" cy="28" rx="20" ry="24" fill="#1A2438" stroke="#2A3A55" class="bodypart" data-part="kopf" onclick="togglePain('kopf')"/>
+          <rect x="70" y="50" width="20" height="18" fill="#1A2438" stroke="#2A3A55" class="bodypart" data-part="nacken" onclick="togglePain('nacken')"/>
+          <circle cx="52" cy="78" r="15" fill="#1A2438" stroke="#2A3A55" class="bodypart" data-part="schulter_l" onclick="togglePain('schulter_l')"/>
+          <circle cx="108" cy="78" r="15" fill="#1A2438" stroke="#2A3A55" class="bodypart" data-part="schulter_r" onclick="togglePain('schulter_r')"/>
+          <rect x="62" y="68" width="36" height="60" rx="8" fill="#1A2438" stroke="#2A3A55" class="bodypart" data-part="brust" onclick="togglePain('brust')"/>
+          <rect x="62" y="128" width="36" height="42" rx="6" fill="#1A2438" stroke="#2A3A55" class="bodypart" data-part="ruecken" onclick="togglePain('ruecken')"/>
+          <rect x="62" y="170" width="36" height="36" rx="6" fill="#1A2438" stroke="#2A3A55" class="bodypart" data-part="unterer_ruecken" onclick="togglePain('unterer_ruecken')"/>
+          <rect x="38" y="92" width="14" height="56" rx="7" fill="#1A2438" stroke="#2A3A55" class="bodypart" data-part="arm_l" onclick="togglePain('arm_l')"/>
+          <rect x="108" y="92" width="14" height="56" rx="7" fill="#1A2438" stroke="#2A3A55" class="bodypart" data-part="arm_r" onclick="togglePain('arm_r')"/>
+          <circle cx="45" cy="156" r="9" fill="#1A2438" stroke="#2A3A55" class="bodypart" data-part="ellbogen_l" onclick="togglePain('ellbogen_l')"/>
+          <circle cx="115" cy="156" r="9" fill="#1A2438" stroke="#2A3A55" class="bodypart" data-part="ellbogen_r" onclick="togglePain('ellbogen_r')"/>
+          <rect x="63" y="206" width="16" height="62" rx="8" fill="#1A2438" stroke="#2A3A55" class="bodypart" data-part="bein_l" onclick="togglePain('bein_l')"/>
+          <rect x="81" y="206" width="16" height="62" rx="8" fill="#1A2438" stroke="#2A3A55" class="bodypart" data-part="bein_r" onclick="togglePain('bein_r')"/>
+          <circle cx="71" cy="274" r="9" fill="#1A2438" stroke="#2A3A55" class="bodypart" data-part="knie_l" onclick="togglePain('knie_l')"/>
+          <circle cx="89" cy="274" r="9" fill="#1A2438" stroke="#2A3A55" class="bodypart" data-part="knie_r" onclick="togglePain('knie_r')"/>
+        </svg>
+        <div style="font-size:10px;color:var(--muted);margin-top:8px;text-align:center;font-family:'DM Mono',monospace;">1× = leicht · 2× = stark · 3× = weg</div>
+      </div>
+      <div class="injury-info" id="injury-info"><p style="font-size:13px;color:var(--muted);">Keine Beschwerden. Training läuft wie geplant. 💪</p></div>
+    </div>
+  </div>
+  <div class="card" id="injury-adjustment" style="display:none;"><div class="card-label" style="margin-bottom:12px;">KI-Trainingsanpassung</div><div id="injury-adjust-content"></div></div>
+
+  <!-- KFA Navy -->
+  <div class="card">
+    <div class="card-label" style="margin-bottom:8px;">Körperfettanteil — Navy-Methode</div>
+    <p style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.6;">Miss: Hals unter dem Kehlkopf, Taille an der schmalsten Stelle, Hüfte an der breitesten.</p>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;">
+      <div class="form-group"><label>HALSUMFANG (CM)</label><input type="number" id="m-neck" value="38" step="0.5" oninput="calcNavy()"></div>
+      <div class="form-group"><label>TAILLENUMFANG (CM)</label><input type="number" id="m-waist" value="84" step="0.5" oninput="calcNavy()"></div>
+      <div class="form-group" id="hip-group" style="display:none;"><label>HÜFTUMFANG (CM)</label><input type="number" id="m-hip" value="95" step="0.5" oninput="calcNavy()"></div>
+    </div>
+    <div id="navy-result"></div>
+  </div>
+
+  <!-- Körpermaße -->
+  <div class="card">
+    <div class="card-label" style="margin-bottom:14px;">Weitere Körpermaße</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;">
+      <div class="form-group"><label>BRUST (CM)</label><input type="number" id="m-chest" value="100" step="0.5"></div>
+      <div class="form-group"><label>OBERARM (CM)</label><input type="number" id="m-arm" value="38" step="0.5"></div>
+      <div class="form-group"><label>OBERSCHENKEL (CM)</label><input type="number" id="m-thigh" value="58" step="0.5"></div>
+    </div>
+    <div id="measure-edit-banner" style="display:none;background:rgba(255,173,51,0.08);border:1px solid rgba(255,173,51,0.25);border-radius:9px;padding:10px 12px;margin-top:12px;"></div>
+    <button id="measure-save-btn" class="btn-primary" style="margin-top:12px;" onclick="saveMeasurement()">📏 Heutige Maße + KFA speichern</button>
+    <div id="measure-save-status" style="margin-top:8px;font-size:12px;"></div>
+  </div>
+
+  <div class="card"><div class="card-label" style="margin-bottom:12px;">Verlauf — gespeicherte Messungen</div><div id="measure-history"></div></div>
+
+  <!-- Deload -->
+  <div class="card">
+    <div class="card-label" style="margin-bottom:12px;">Deload-Zyklus</div>
+    <div id="deload-status"></div>
+    <button class="btn-ghost" style="margin-top:12px;width:100%;" onclick="resetDeloadCycle()">🔄 Neuen Trainingszyklus starten</button>
+  </div>
+
+  <!-- Einstellungen -->
+  <div class="card">
+    <div class="card-label" style="margin-bottom:4px;">Einstellungen</div>
+    <div class="toggle-row">
+      <span style="font-size:13px;">KI fragt vor Plan-Änderungen</span>
+      <label class="toggle-wrap">
+        <input type="checkbox" id="ask-before-change" checked onchange="saveAll()">
+        <span class="toggle-slider"></span>
+      </label>
+    </div>
+    <div class="toggle-row" style="border-bottom:none;">
+      <span style="font-size:13px;color:var(--muted);">Alle Daten löschen</span>
+      <button class="btn-ghost" style="color:var(--danger);border-color:rgba(255,87,87,0.3);" onclick="wipeAll()">Reset</button>
+    </div>
+  </div>
+
+  <!-- Apple Watch Import -->
+  <div class="card">
+    <div class="card-label" style="margin-bottom:8px;">Apple Watch Daten importieren</div>
+    <p style="font-size:12px;color:var(--muted);line-height:1.65;margin-bottom:14px;">
+      Exportiere mit <strong style="color:var(--text);">"Health Auto Export"</strong> (App Store) deine Daten als CSV/JSON. HRV, Ruhepuls, Schlaf, Schritte und <strong style="color:var(--text);">Aktive Kalorien</strong> (keine Ruheenergie) werden übernommen und sperren die Regler für heute. Am nächsten Tag ohne neuen Import werden die Regler automatisch wieder freigegeben.
+    </p>
+    <div style="margin-bottom:14px;">
+      <div style="font-size:10px;color:var(--muted);font-family:'DM Mono',monospace;letter-spacing:.07em;text-transform:uppercase;margin-bottom:8px;">Energie-Einheit in deiner Export-Datei</div>
+      <div class="mode-selector" style="margin-bottom:0;">
+        <button class="mode-btn active" id="unit-kcal" onclick="setHealthEnergyUnit('kcal')">kcal<span style="display:block;font-size:10px;font-weight:400;color:var(--muted);">direkt übernehmen</span></button>
+        <button class="mode-btn" id="unit-kj" onclick="setHealthEnergyUnit('kj')">kJ<span style="display:block;font-size:10px;font-weight:400;color:var(--muted);">÷ 4,18 → kcal</span></button>
+      </div>
+    </div>
+    <div class="import-zone" onclick="document.getElementById('health-file').click()">
+      <div style="font-size:32px;margin-bottom:10px;">⌚</div>
+      <div style="font-size:13px;font-weight:600;">Health-Datei hochladen</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:4px;">CSV oder JSON · HRV, Ruhepuls, Schlaf, Schritte, Aktive Kalorien</div>
+    </div>
+    <input type="file" id="health-file" accept=".csv,.json" style="display:none;" onchange="importHealthFile(event)">
+    <div id="import-status" style="margin-top:10px;font-size:12px;"></div>
+    <button class="btn-ghost" style="margin-top:10px;width:100%;color:var(--danger);border-color:rgba(255,87,87,0.3);" onclick="clearTodayWatchImport()">🗑 Heutigen Watch-Import löschen</button>
+  </div>
+</div>
+</div><!-- /app -->
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modal-overlay">
+  <div class="modal">
+    <div class="modal-title" id="modal-title">KI-Empfehlung</div>
+    <div class="modal-sub" id="modal-sub">...</div>
+    <div class="modal-actions">
+      <button class="modal-btn modal-btn-no" id="modal-no" onclick="closeModal()">Ablehnen</button>
+      <button class="modal-btn modal-btn-yes" id="modal-yes">Akzeptieren</button>
+    </div>
+  </div>
+</div>
+
+<script src="js/state.js"></script>
+<script src="js/data.js"></script>
+<script src="js/utils.js"></script>
+<script src="js/compute.js"></script>
+<script src="js/persistence.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/charts.js"></script>
+<script src="js/dashboard.js"></script>
+<script src="js/nutrition.js"></script>
+<script src="js/body.js"></script>
+<script src="js/training.js"></script>
+<script src="js/health-import.js"></script>
+<script src="js/init.js"></script>
+</body>
+</html>
