@@ -18,6 +18,7 @@ let measureHistoryFilter='30d';
 let measureHistoryShown=5;
 let mealTemplates=lsGet('hc_meal_templates',null);
 let editingTemplateIdx=null;
+let globalUIMode=lsGet('vitale_ui_mode','beginner');
 
 // Safe localStorage
 function lsGet(k,def){try{const v=localStorage.getItem(k);return v?JSON.parse(v):def;}catch(e){return def;}}

@@ -19,6 +19,11 @@
       <div class="logo-tagline">KI · Muskelaufbau · Apple Watch</div>
     </div>
   </div>
+  <div class="ui-mode-toggle">
+    <button class="mode-btn" data-mode="basic" onclick="setUIMode('basic')">🚶</button>
+    <button class="mode-btn active" data-mode="beginner" onclick="setUIMode('beginner')">🌱</button>
+    <button class="mode-btn" data-mode="advanced" onclick="setUIMode('advanced')">⚡</button>
+  </div>
   <div class="status-pill"><div class="pulse"></div><span>KI aktiv</span></div>
 </header>
 
@@ -33,117 +38,27 @@
 <!-- ═══════════ HEUTE ═══════════ -->
 <div id="home" class="panel active">
   <div id="deload-banner-slot"></div>
-
-  <div class="dash-hero">
-    <div class="dash-greet" id="dash-greet">Dein Tag im Überblick</div>
-    <div class="dash-training" id="dash-training">Hypertrophie · Push</div>
-    <div class="dash-training-sub" id="dash-training-sub">Schwere Session — heute ist Brust + Trizeps dran</div>
-  </div>
-
-  <!-- Recovery + Gesundheit -->
-  <div class="grid2" style="margin-bottom:14px;">
-    <div class="card expandable" onclick="toggleExpand('recovery-expand')">
-      <div class="card-header" style="margin-bottom:10px;">
-        <div class="card-label">Recovery Score</div>
-        <span class="collapse-arrow" id="recovery-arrow">▾</span>
-      </div>
-      <div style="display:flex;align-items:center;gap:14px;">
-        <div class="recovery-ring">
-          <svg viewBox="0 0 88 88"><circle cx="44" cy="44" r="36" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="7"/><circle cx="44" cy="44" r="36" fill="none" stroke="#00E5A0" stroke-width="7" stroke-linecap="round" stroke-dasharray="226" stroke-dashoffset="56" id="recovery-circle"/></svg>
-          <div class="recovery-ring-val" id="recovery-score" style="color:var(--accent);">72</div>
-        </div>
-        <div>
-          <div id="recovery-badge"><span class="badge badge-green">Optimal</span></div>
-          <div style="font-size:11px;color:var(--muted);margin-top:6px;">Tippen für Details</div>
-        </div>
-      </div>
-      <div class="expand-body" id="recovery-expand">
-        <div class="stat-row"><span class="sr-label">🌙 Schlaf</span><span class="sr-val" id="dx-sleep">7 / 10</span></div>
-        <div class="stat-row"><span class="sr-label">💓 HRV</span><span class="sr-val" id="dx-hrv">55 ms</span></div>
-        <div class="stat-row"><span class="sr-label">❤️ Ruhepuls</span><span class="sr-val" id="dx-rhr">58 bpm</span></div>
-        <div class="stat-row"><span class="sr-label">👟 Schritte</span><span class="sr-val" id="dx-steps">8.000</span></div>
-        <div class="stat-row"><span class="sr-label">⚡ Stress</span><span class="sr-val" id="dx-stress">4 / 10</span></div>
-        <div style="font-size:11px;color:var(--muted);margin-top:8px;">Im Tab "Profil & Körper" → Status anpassen.</div>
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="card-label" style="margin-bottom:12px;">Vitalzeichen</div>
-      <div style="text-align:center;padding:6px 0;">
-        <div style="font-size:28px;font-weight:700;letter-spacing:-0.02em;" id="health-val">Gut</div>
-        <div style="font-size:12px;color:var(--muted);margin-top:4px;" id="health-sub">stabil</div>
-      </div>
-      <div class="stat-row" style="margin-top:8px;"><span class="sr-label">Ruhepuls</span><span class="sr-val" id="dh-rhr">58 bpm</span></div>
-      <div class="stat-row"><span class="sr-label">HRV</span><span class="sr-val" id="dh-hrv">55 ms</span></div>
+  <div id="home-render"></div>
+  <!-- Versteckte Elemente für JS-Kompatibilität -->
+  <div style="display:none;">
+    <div id="k-burned"></div><div id="week-mini"></div>
+    <div id="water-amount"></div><div id="water-goal-lbl"></div><div id="water-glasses"></div>
+    <div id="health-val"></div><div id="health-sub"></div>
+    <div id="dh-rhr"></div><div id="dh-hrv"></div>
+    <div id="dx-sleep"></div><div id="dx-hrv"></div><div id="dx-rhr"></div><div id="dx-steps"></div><div id="dx-stress"></div>
+    <div id="weight-trend-card" style="display:none;">
+      <div id="trend-metric-label"></div>
+      <select id="trend-metric" onchange="renderWeightTrend()">
+        <option value="weight">Gewicht</option><option value="bf">KFA</option>
+        <option value="waist">Taille</option><option value="hip">Hüfte</option>
+        <option value="chest">Brust</option><option value="arm">Oberarm</option>
+        <option value="thigh">Oberschenkel</option>
+      </select>
+      <span id="weight-trend-badge"></span>
+      <div id="weight-trend-chart"></div><div id="weight-trend-dates"></div>
+      <div id="weight-trend-note"></div>
     </div>
   </div>
-
-  <!-- Kalorien (burned = Info-only, bereits im TDEE-Ziel enthalten) -->
-  <div class="card">
-    <div class="card-label" style="margin-bottom:12px;">Energie-Bilanz heute</div>
-    <div class="kcal-bar" id="kcal-bar">
-      <div style="width:60%;background:var(--accent);border-radius:6px 0 0 6px;"></div>
-      <div style="width:40%;background:var(--border);border-radius:0 6px 6px 0;"></div>
-    </div>
-    <div class="grid4" style="margin-top:12px;">
-      <div class="metric"><div class="metric-label">Ziel</div><div class="metric-value" id="k-goal" style="font-size:18px;color:var(--accent);">2480</div><div class="metric-unit">kcal</div></div>
-      <div class="metric"><div class="metric-label">Gegessen</div><div class="metric-value" id="k-eaten" style="font-size:18px;">0</div><div class="metric-unit">kcal</div></div>
-      <div class="metric"><div class="metric-label">⌚ Aktive Kalorien</div><div class="metric-value" id="k-burned" style="font-size:18px;color:var(--warn);">—</div><div class="metric-unit">kcal</div></div>
-      <div class="metric"><div class="metric-label">Verbleibend</div><div class="metric-value" id="k-remain" style="font-size:18px;color:var(--info);">2480</div><div class="metric-unit">kcal</div></div>
-    </div>
-    <p style="font-size:11px;color:var(--muted);margin-top:10px;line-height:1.6;">Verbleibend = Ziel − Gegessen. ⌚ Aktive Kalorien (Watch) sind nur zur Info — der Trainingsverbrauch ist bereits im Tagesziel eingerechnet. Mahlzeiten im Tab Ernährung eintragen.</p>
-  </div>
-
-  <!-- Wasser -->
-  <div class="card">
-    <div class="card-header">
-      <div class="card-label">Wasser</div>
-      <div style="display:flex;align-items:baseline;gap:4px;">
-        <span style="font-size:20px;font-weight:700;color:var(--water);" id="water-amount">0,0 L</span>
-        <span style="font-size:11px;color:var(--muted);" id="water-goal-lbl">/ 2,8 L</span>
-      </div>
-    </div>
-    <div class="water-glass-row" id="water-glasses"></div>
-    <div style="display:flex;gap:8px;margin-top:10px;">
-      <button class="water-btn" onclick="addWater(200)">+ Glas 200ml</button>
-      <button class="water-btn" onclick="addWater(500)" style="background:rgba(56,196,245,0.7);">+ Flasche 500ml</button>
-      <button class="water-btn minus-btn" onclick="addWater(-200)">−</button>
-    </div>
-  </div>
-
-  <!-- Wochenverlauf Mini -->
-  <div class="card">
-    <div class="card-label" style="margin-bottom:12px;">Diese Woche</div>
-    <div class="day-mini" id="week-mini"></div>
-  </div>
-
-  <!-- Gewicht Verlauf -->
-  <div class="card" id="weight-trend-card" style="display:none;">
-    <div class="card-header">
-      <div class="card-label" id="trend-metric-label">Gewichtsverlauf</div>
-      <div style="display:flex;align-items:center;gap:8px;">
-        <select id="trend-metric" class="chart-select" onchange="renderWeightTrend()">
-          <option value="weight">Gewicht</option>
-          <option value="bf">KFA</option>
-          <option value="waist">Taille</option>
-          <option value="hip">Hüfte</option>
-          <option value="chest">Brust</option>
-          <option value="arm">Oberarm</option>
-          <option value="thigh">Oberschenkel</option>
-        </select>
-        <span id="weight-trend-badge"></span>
-      </div>
-    </div>
-    <div id="weight-trend-chart" style="display:flex;align-items:flex-end;gap:4px;height:56px;margin-bottom:6px;"></div>
-    <div id="weight-trend-dates" style="display:flex;gap:4px;"></div>
-    <div style="font-size:11px;color:var(--muted);margin-top:8px;" id="weight-trend-note"></div>
-  </div>
-
-  <!-- Wochen-Check -->
-  <div class="card" id="weekly-review-card"></div>
-
-  <!-- KI Analyse -->
-  <div class="ai-box"><div class="ai-chip">⚡ KI ANALYSE</div><div id="ai-recommendation">Berechne...</div></div>
 </div>
 
 <!-- ═══════════ TRAINING ═══════════ -->
@@ -578,6 +493,7 @@
 <script src="js/ui.js"></script>
 <script src="js/charts.js"></script>
 <script src="js/dashboard.js"></script>
+<script src="js/home-modes.js"></script>
 <script src="js/nutrition.js"></script>
 <script src="js/body.js"></script>
 <script src="js/training.js"></script>
