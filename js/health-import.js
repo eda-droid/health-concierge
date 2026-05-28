@@ -199,29 +199,47 @@ function parseHealthCSV(content){
 // ════════════════════════════════════════════
 function importHealthData(rawJson){
   try{
-    const imported=parseHealthJSON(rawJson);
+    const metrics=rawJson?.data?.metrics;
+    if(!Array.isArray(metrics)||!metrics.length)return;
+
+    // Returns the qty of the most-recent entry for a named metric, or null.
+    function latest(name){
+      const m=metrics.find(m=>m.name===name);
+      if(!m)return null;
+      const entries=Array.isArray(m.data)?m.data:[];
+      if(!entries.length)return null;
+      const sorted=entries.slice().sort((a,b)=>new Date(b.date)-new Date(a.date));
+      return parseFloat(sorted[0].qty)||null;
+    }
+
     let anyValue=false;const meta={};
-    if(imported.hrv){setVal('hrv',Math.max(20,Math.min(100,Math.round(imported.hrv))));meta.hrv=Math.round(imported.hrv);anyValue=true;}
-    if(imported.rhr){setVal('rhr',Math.max(40,Math.min(90,Math.round(imported.rhr))));meta.rhr=Math.round(imported.rhr);anyValue=true;}
-    if(imported.steps){setVal('steps',Math.min(25000,Math.round(imported.steps)));meta.steps=Math.round(imported.steps);anyValue=true;}
-    if(imported.sleep){
-      let sleepH=imported.sleep;
-      if(sleepH>24)sleepH=sleepH/60;
-      sleepH=Math.round(sleepH*10)/10;
-      const sleepScore=Math.max(1,Math.min(10,Math.round((sleepH-4)/5*9+1)));
-      setVal('sleep',sleepScore);meta.sleepH=sleepH;anyValue=true;
+
+    const hrv=latest('heart_rate_variability_sdnn');
+    if(hrv>0){setVal('hrv',Math.max(20,Math.min(100,Math.round(hrv))));meta.hrv=Math.round(hrv);anyValue=true;}
+
+    const rhr=latest('resting_heart_rate');
+    if(rhr>0){setVal('rhr',Math.max(40,Math.min(90,Math.round(rhr))));meta.rhr=Math.round(rhr);anyValue=true;}
+
+    const sleepH=latest('sleep_analysis'); // units: hr
+    if(sleepH>0){
+      const h=Math.round(sleepH*10)/10;
+      const score=Math.max(1,Math.min(10,Math.round((h-4)/4*9+1)));
+      setVal('sleep',score);meta.sleepH=h;anyValue=true;
     }
-    if(imported.burned){
-      getDay(getTodayKey()).burned=Math.round(imported.burned);saveDaily();
-      meta.burned=Math.round(imported.burned);anyValue=true;
+
+    const steps=latest('step_count');
+    if(steps>0){setVal('steps',Math.min(25000,Math.round(steps)));meta.steps=Math.round(steps);anyValue=true;}
+
+    const burned=latest('active_energy');
+    if(burned>0){
+      getDay(getTodayKey()).burned=Math.round(burned);saveDaily();
+      meta.burned=Math.round(burned);anyValue=true;
     }
-    if(imported.sleepPhases&&imported.sleepPhases.total>0){
-      meta.sleepStages=imported.sleepPhases;
-    }
+
     if(anyValue){
       lastHealthImportDate=getTodayKey();lastHealthImportValues=meta;
       watchAvailable=true;
-      stagesAvailable=!!(lastHealthImportValues?.sleepStages);
+      stagesAvailable=!!(meta.sleepStages);
       saveAll();updateAll();lockSliders();renderImportStatus();
     }
   }catch(e){}
