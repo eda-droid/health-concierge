@@ -68,15 +68,17 @@ function importHealthFile(event){
       }
 
       let anyValue=false;const meta={};
-      if(imported.hrv){setVal('hrv',Math.max(20,Math.min(100,Math.round(imported.hrv))));meta.hrv=Math.round(imported.hrv);anyValue=true;}
+      if(imported.hrv){setVal('hrv',Math.max(20,Math.min(200,Math.round(imported.hrv))));meta.hrv=Math.round(imported.hrv);anyValue=true;}
       if(imported.rhr){setVal('rhr',Math.max(40,Math.min(90,Math.round(imported.rhr))));meta.rhr=Math.round(imported.rhr);anyValue=true;}
       if(imported.steps){setVal('steps',Math.min(25000,Math.round(imported.steps)));meta.steps=Math.round(imported.steps);anyValue=true;}
       if(imported.sleep){
         let sleepH=imported.sleep;
         if(sleepH>24)sleepH=sleepH/60;
         sleepH=Math.round(sleepH*10)/10;
-        const sleepScore=Math.max(1,Math.min(10,Math.round((sleepH-4)/5*9+1)));
-        setVal('sleep',sleepScore);meta.sleepH=sleepH;anyValue=true;
+        const sleepScore=Math.max(1,Math.min(10,Math.round((sleepH-4)/4*9+1)));
+        setVal('sleep',sleepScore);
+        meta.sleepH=imported.sleepTotalH?Math.round(imported.sleepTotalH*10)/10:sleepH;
+        anyValue=true;
       }
       if(imported.burned){
         getDay(getTodayKey()).burned=Math.round(imported.burned);saveDaily();
@@ -117,12 +119,12 @@ function _applyImportBurned(kcal){
 }
 function _applyImportNonCalorie(imported){
   const meta={};
-  if(imported.hrv){setVal('hrv',Math.max(20,Math.min(100,Math.round(imported.hrv))));meta.hrv=Math.round(imported.hrv);}
+  if(imported.hrv){setVal('hrv',Math.max(20,Math.min(200,Math.round(imported.hrv))));meta.hrv=Math.round(imported.hrv);}
   if(imported.rhr){setVal('rhr',Math.max(40,Math.min(90,Math.round(imported.rhr))));meta.rhr=Math.round(imported.rhr);}
   if(imported.steps){setVal('steps',Math.min(25000,Math.round(imported.steps)));meta.steps=Math.round(imported.steps);}
   if(imported.sleep){
     let sleepH=imported.sleep;if(sleepH>24)sleepH=sleepH/60;sleepH=Math.round(sleepH*10)/10;
-    const sleepScore=Math.max(1,Math.min(10,Math.round((sleepH-4)/5*9+1)));
+    const sleepScore=Math.max(1,Math.min(10,Math.round((sleepH-4)/4*9+1)));
     setVal('sleep',sleepScore);meta.sleepH=sleepH;
   }
   if(Object.keys(meta).length){
@@ -148,7 +150,11 @@ function parseHealthJSON(data){
         out._kcalDiag.push({field:m.name,total:Math.round(dayTotal||qty),selected:false});
       }
 
-      if(name.includes('heart_rate_variability')&&qty>0)out.hrv=qty;
+      if(name.includes('heart_rate_variability')&&entries.length){
+        const vals=entries.map(e=>parseFloat(e.qty||e.value||e.Avg)||0).filter(v=>v>0);
+        console.log('[HealthImport] HRV raw entries:',entries.slice(0,5),'→ avg:',vals.length?Math.round(vals.reduce((a,b)=>a+b,0)/vals.length):0,'ms');
+        if(vals.length)out.hrv=vals.reduce((a,b)=>a+b,0)/vals.length;
+      }
       else if(name.includes('resting_heart_rate')&&qty>0)out.rhr=qty;
       else if(name.includes('step_count')&&qty>0)out.steps=qty;
       else if(_isActiveEnergyField(name)){
@@ -156,9 +162,32 @@ function parseHealthJSON(data){
         out._burnedField=m.name;
         const d=out._kcalDiag.find(x=>x.field===m.name);if(d)d.selected=true;
       }
-      else if(name.includes('sleep_analysis')||name.includes('sleep')){
-        const totalMin=entries.reduce((a,e)=>a+(parseFloat(e.qty||e.value)||0),0);
-        out.sleep=totalMin>0?totalMin:qty;
+      else if(name==='sleep_analysis'){
+        // HAE v2: each entry has qty (hours) + value (stage name)
+        const stageH={awake:0,rem:0,core:0,deep:0};let hasStages=false;
+        entries.forEach(e=>{
+          const h=parseFloat(e.qty)||0;if(h<=0)return;
+          const v=(e.value||'').toLowerCase().trim();
+          if(v==='awake'){stageH.awake+=h;hasStages=true;}
+          else if(v==='rem'){stageH.rem+=h;hasStages=true;}
+          else if(v==='core'){stageH.core+=h;hasStages=true;}
+          else if(v==='deep'){stageH.deep+=h;hasStages=true;}
+        });
+        const asleepH=stageH.rem+stageH.core+stageH.deep;
+        out.sleep=asleepH>0?asleepH:(dayTotal||qty);
+        out.sleepTotalH=(asleepH+stageH.awake)||out.sleep;
+        if(hasStages){
+          out.sleepPhases={
+            deep:Math.round(stageH.deep*60),
+            rem:Math.round(stageH.rem*60),
+            light:Math.round(stageH.core*60),
+            total:Math.round(asleepH*60)
+          };
+        }
+      }
+      else if(name.includes('sleep')&&!out.sleep){
+        const totalH=entries.reduce((a,e)=>a+(parseFloat(e.qty)||0),0);
+        out.sleep=totalH>0?totalH:qty;
       }
       else if(name.includes('deep_sleep')){out.sleepPhases.deep+=dayTotal||qty;}
       else if(name.includes('rem_sleep')){out.sleepPhases.rem+=dayTotal||qty;}
@@ -202,7 +231,7 @@ function importHealthData(rawJson){
     const metrics=rawJson?.data?.metrics;
     if(!Array.isArray(metrics)||!metrics.length)return;
 
-    // Returns the qty of the most-recent entry for a named metric, or null.
+    // Returns the most-recent qty for a named metric (good for step_count, active_energy, etc.)
     function latest(name){
       const m=metrics.find(m=>m.name===name);
       if(!m)return null;
@@ -211,20 +240,54 @@ function importHealthData(rawJson){
       const sorted=entries.slice().sort((a,b)=>new Date(b.date)-new Date(a.date));
       return parseFloat(sorted[0].qty)||null;
     }
+    // Returns the daily average qty for a named metric (correct for HRV, RHR)
+    function avgMetric(name){
+      const m=metrics.find(m=>m.name===name);
+      if(!m)return null;
+      const entries=Array.isArray(m.data)?m.data:[];
+      const vals=entries.map(e=>parseFloat(e.qty)).filter(v=>v>0);
+      if(!vals.length)return null;
+      return vals.reduce((a,b)=>a+b,0)/vals.length;
+    }
 
     let anyValue=false;const meta={};
 
-    const hrv=latest('heart_rate_variability_sdnn');
-    if(hrv>0){setVal('hrv',Math.max(20,Math.min(100,Math.round(hrv))));meta.hrv=Math.round(hrv);anyValue=true;}
+    const hrv=avgMetric('heart_rate_variability_sdnn');
+    console.log('[HealthImport] HRV raw entries (webhook):',metrics.find(m=>m.name==='heart_rate_variability_sdnn')?.data?.slice(0,5),'→ avg:',hrv?Math.round(hrv):0,'ms');
+    if(hrv>0){setVal('hrv',Math.max(20,Math.min(200,Math.round(hrv))));meta.hrv=Math.round(hrv);anyValue=true;}
 
     const rhr=latest('resting_heart_rate');
     if(rhr>0){setVal('rhr',Math.max(40,Math.min(90,Math.round(rhr))));meta.rhr=Math.round(rhr);anyValue=true;}
 
-    const sleepH=latest('sleep_analysis'); // units: hr
-    if(sleepH>0){
-      const h=Math.round(sleepH*10)/10;
+    // Sleep: parse per-stage entries (HAE v2 format)
+    const sleepMetric=metrics.find(m=>m.name==='sleep_analysis');
+    const sleepEntries=Array.isArray(sleepMetric?.data)?sleepMetric.data:[];
+    console.log('[HealthImport] sleep_analysis raw:',JSON.stringify(sleepEntries.slice(0,5),null,2));
+    const stageH={awake:0,rem:0,core:0,deep:0};let hasStages=false;
+    sleepEntries.forEach(e=>{
+      const h=parseFloat(e.qty)||0;if(h<=0)return;
+      const v=(e.value||'').toLowerCase().trim();
+      if(v==='awake'){stageH.awake+=h;hasStages=true;}
+      else if(v==='rem'){stageH.rem+=h;hasStages=true;}
+      else if(v==='core'){stageH.core+=h;hasStages=true;}
+      else if(v==='deep'){stageH.deep+=h;hasStages=true;}
+    });
+    const asleepH=stageH.rem+stageH.core+stageH.deep;
+    const sleepHForScore=asleepH||(sleepEntries.length?parseFloat(sleepEntries[sleepEntries.length-1].qty)||0:0);
+    if(sleepHForScore>0){
+      const h=Math.round(sleepHForScore*10)/10;
       const score=Math.max(1,Math.min(10,Math.round((h-4)/4*9+1)));
-      setVal('sleep',score);meta.sleepH=h;anyValue=true;
+      setVal('sleep',score);
+      meta.sleepH=Math.round(((asleepH+stageH.awake)||sleepHForScore)*10)/10;
+      anyValue=true;
+    }
+    if(hasStages){
+      meta.sleepStages={
+        deep:Math.round(stageH.deep*60),
+        rem:Math.round(stageH.rem*60),
+        light:Math.round(stageH.core*60),
+        total:Math.round(asleepH*60)
+      };
     }
 
     const steps=latest('step_count');

@@ -9,7 +9,7 @@ function getStatus(){return{sleep:parseInt(val('sleep'))||7,hrv:parseInt(val('hr
 function calcRecovery(s){
   let r=0;
   r+=(s.sleep/10)*35;
-  r+=((s.hrv-20)/80)*30;
+  r+=((s.hrv-20)/180)*30;
   r+=Math.max(0,(10-s.stress)/10)*20;
   r+=Math.min(1,s.steps/10000)*8;
   r+=Math.max(0,(90-s.rhr)/50)*7;
