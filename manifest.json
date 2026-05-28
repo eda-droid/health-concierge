@@ -2,20 +2,22 @@
   "name": "Vitale Health Coach",
   "short_name": "Vitale",
   "description": "KI Muskelaufbau & Apple Watch Coach",
-  "start_url": "./HealthConcierge_v2.html",
+  "start_url": "/index.html",
+  "scope": "/",
+  "id": "/index.html",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#080C12",
   "theme_color": "#00E5A0",
   "icons": [
     {
-      "src": "assets/logo.png",
+      "src": "/assets/logo.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "assets/logo.png",
+      "src": "/assets/logo.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"

@@ -6,12 +6,12 @@
 <title>Vitale — KI Health Coach</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/style.css">
-<link rel="manifest" href="manifest.json">
+<link rel="manifest" href="/manifest.json">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Vitale">
 <meta name="theme-color" content="#00E5A0">
-<link rel="apple-touch-icon" href="assets/logo.png">
+<link rel="apple-touch-icon" href="/assets/logo.png">
 </head>
 <body>
 <div class="app">
@@ -550,7 +550,7 @@
 <script>
   if('serviceWorker' in navigator)
     window.addEventListener('load', () =>
-      navigator.serviceWorker.register('./sw.js'));
+      navigator.serviceWorker.register('/sw.js', { scope: '/' }));
 </script>
 </body>
 </html>
