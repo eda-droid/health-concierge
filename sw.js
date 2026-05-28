@@ -7,7 +7,7 @@ const ASSETS = [
   './js/charts.js','./js/dashboard.js','./js/home-modes.js',
   './js/nutrition.js','./js/body.js','./js/training.js',
   './js/health-import.js','./js/init.js'
-  // './assets/logo.png' — uncomment once the file exists
+  './assets/logo.png' 
 ];
 
 self.addEventListener('install', e => {

@@ -35,3 +35,17 @@ renderInjury();
 setHealthEnergyUnit(healthEnergyUnit);
 renderImportStatus();
 document.addEventListener('DOMContentLoaded',function(){calcNavy();_initSubTabs('profile','profil');});
+
+// ════════════════════════════════════════════
+// AUTO WATCH FETCH
+// ════════════════════════════════════════════
+async function autoFetchWatch(){
+  try{
+    const res=await fetch('https://health-vitale.vercel.app/api/health',{signal:AbortSignal.timeout(3000)});
+    if(!res.ok)return;
+    const data=await res.json();
+    if(Object.keys(data).length)importHealthData(data);
+  }catch(e){}
+}
+autoFetchWatch();
+setInterval(autoFetchWatch,10*60*1000);

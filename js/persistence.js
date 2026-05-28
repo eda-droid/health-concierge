@@ -9,6 +9,7 @@ function saveDaily(){
   Object.values(dailyData).forEach(d=>{
     if(d.mood===undefined)d.mood=null;
     if(d.sleepHours===undefined)d.sleepHours=null;
+    if(d.activityLevel===undefined)d.activityLevel=null;
   });
   lsSet('hc_daily',dailyData);
 }
@@ -56,5 +57,6 @@ function loadState(){
   Object.values(dailyData).forEach(d=>{
     if(d.mood===undefined)d.mood=null;
     if(d.sleepHours===undefined)d.sleepHours=null;
+    if(d.activityLevel===undefined)d.activityLevel=null;
   });
 }

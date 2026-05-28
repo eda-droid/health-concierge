@@ -38,6 +38,17 @@ function getTrainingStreak(){
   }
   return streak;
 }
+function calcStreak(){
+  let streak=0;
+  for(let i=0;i>=-365;i--){
+    const dk=getDateKey(i);
+    const hasFood=(dailyData[dk]?.meals?.length||0)>0;
+    const hasTrain=logData[dk]?.exercises?.some(ex=>ex.sets?.some(s=>s.kg||s.reps));
+    if(hasFood||hasTrain)streak++;
+    else if(i<0)break;
+  }
+  return streak;
+}
 
 function getWeekTrainingDays(){
   let count=0;
@@ -49,6 +60,18 @@ function getWeekTrainingDays(){
   return count;
 }
 
+function getBestLiftToday(){
+  let best={name:null,kg:0};
+  for(let i=-6;i<=0;i++){
+    const d=logData[getDateKey(i)];
+    if(!d)continue;
+    d.exercises.forEach(ex=>{
+      const maxKg=ex.sets.length?Math.max(...ex.sets.map(s=>parseFloat(s.kg)||0)):0;
+      if(maxKg>best.kg)best={name:ex.name,kg:maxKg};
+    });
+  }
+  return best;
+}
 function getBestLiftThisWeek(){
   let best={name:null,kg:0};
   for(let i=-6;i<=0;i++){

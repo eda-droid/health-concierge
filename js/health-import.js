@@ -195,6 +195,39 @@ function parseHealthCSV(content){
 }
 
 // ════════════════════════════════════════════
+// SILENT IMPORT (auto-fetch / programmatic)
+// ════════════════════════════════════════════
+function importHealthData(rawJson){
+  try{
+    const imported=parseHealthJSON(rawJson);
+    let anyValue=false;const meta={};
+    if(imported.hrv){setVal('hrv',Math.max(20,Math.min(100,Math.round(imported.hrv))));meta.hrv=Math.round(imported.hrv);anyValue=true;}
+    if(imported.rhr){setVal('rhr',Math.max(40,Math.min(90,Math.round(imported.rhr))));meta.rhr=Math.round(imported.rhr);anyValue=true;}
+    if(imported.steps){setVal('steps',Math.min(25000,Math.round(imported.steps)));meta.steps=Math.round(imported.steps);anyValue=true;}
+    if(imported.sleep){
+      let sleepH=imported.sleep;
+      if(sleepH>24)sleepH=sleepH/60;
+      sleepH=Math.round(sleepH*10)/10;
+      const sleepScore=Math.max(1,Math.min(10,Math.round((sleepH-4)/5*9+1)));
+      setVal('sleep',sleepScore);meta.sleepH=sleepH;anyValue=true;
+    }
+    if(imported.burned){
+      getDay(getTodayKey()).burned=Math.round(imported.burned);saveDaily();
+      meta.burned=Math.round(imported.burned);anyValue=true;
+    }
+    if(imported.sleepPhases&&imported.sleepPhases.total>0){
+      meta.sleepStages=imported.sleepPhases;
+    }
+    if(anyValue){
+      lastHealthImportDate=getTodayKey();lastHealthImportValues=meta;
+      watchAvailable=true;
+      stagesAvailable=!!(lastHealthImportValues?.sleepStages);
+      saveAll();updateAll();lockSliders();renderImportStatus();
+    }
+  }catch(e){}
+}
+
+// ════════════════════════════════════════════
 // IMPORT STATUS & CLEAR
 // ════════════════════════════════════════════
 function renderImportStatus(){
