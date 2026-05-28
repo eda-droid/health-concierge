@@ -1,13 +1,13 @@
-const CACHE = 'vitale-v1';
+const CACHE = 'vitale-v2';
 const ASSETS = [
-  './HealthConcierge_v2.html',
+  './index.html',
   './css/style.css',
   './js/state.js','./js/data.js','./js/utils.js',
   './js/compute.js','./js/persistence.js','./js/ui.js',
   './js/charts.js','./js/dashboard.js','./js/home-modes.js',
   './js/nutrition.js','./js/body.js','./js/training.js',
   './js/health-import.js','./js/init.js'
-  './assets/logo.png' 
+  // './assets/logo.png' — uncomment once the file exists
 ];
 
 self.addEventListener('install', e => {
