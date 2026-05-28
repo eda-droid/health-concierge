@@ -39,9 +39,10 @@ document.addEventListener('DOMContentLoaded',function(){calcNavy();_initSubTabs(
 // ════════════════════════════════════════════
 // AUTO WATCH FETCH
 // ════════════════════════════════════════════
+const HEALTH_SECRET='dein-geheimnis-passwort';
 async function autoFetchWatch(){
   try{
-    const res=await fetch('https://health-vitale.vercel.app/api/health',{signal:AbortSignal.timeout(3000)});
+    const res=await fetch('https://health-vitale.vercel.app/api/health?secret='+HEALTH_SECRET,{signal:AbortSignal.timeout(3000)});
     if(!res.ok)return;
     const data=await res.json();
     if(Object.keys(data).length)importHealthData(data);
