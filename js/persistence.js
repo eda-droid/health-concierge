@@ -4,7 +4,14 @@
 function saveLog(){lsSet('hc_log',logData);lsSet('hc_pr',prData);}
 function saveMeasureData(){lsSet('hc_measure',measureData);}
 function saveCustomPlan(){lsSet('hc_customplan',customPlan);}
-function saveDaily(){lsSet('hc_daily',dailyData);}
+function saveDaily(){
+  // Ensure mood + sleepHours exist on every entry (backward compat)
+  Object.values(dailyData).forEach(d=>{
+    if(d.mood===undefined)d.mood=null;
+    if(d.sleepHours===undefined)d.sleepHours=null;
+  });
+  lsSet('hc_daily',dailyData);
+}
 function saveMealTemplates(){lsSet('hc_meal_templates',mealTemplates);}
 
 function saveAll(){
@@ -42,4 +49,12 @@ function loadState(){
   painMap=appState.painMap||{};
   ['bulk','maintain','cut'].forEach(x=>{const btn=document.getElementById('goal-'+x);if(btn)btn.className='goal-btn'+(x===currentGoal?' active-'+x:'');});
   applyLockState();applyTrainingModeUI();
+  // Derive watch/stages availability from loaded import state
+  watchAvailable=(lastHealthImportDate!==null);
+  stagesAvailable=!!(lastHealthImportValues?.sleepStages);
+  // Backward compat: null-fill missing mood/sleepHours in loaded daily entries
+  Object.values(dailyData).forEach(d=>{
+    if(d.mood===undefined)d.mood=null;
+    if(d.sleepHours===undefined)d.sleepHours=null;
+  });
 }

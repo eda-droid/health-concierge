@@ -83,9 +83,14 @@ function importHealthFile(event){
         meta.burned=Math.round(imported.burned);anyValue=true;
         if(unitConvNote)meta.burnedNote=unitConvNote;
       }
-      if(imported.sleepPhases){renderSleepAnalysis(imported.sleepPhases);}
+      if(imported.sleepPhases&&imported.sleepPhases.total>0){
+        renderSleepAnalysis(imported.sleepPhases);
+        meta.sleepStages=imported.sleepPhases;
+      }
       if(anyValue){
         lastHealthImportDate=getTodayKey();lastHealthImportValues=meta;
+        watchAvailable=true;
+        stagesAvailable=!!(lastHealthImportValues?.sleepStages);
         saveAll();updateAll();lockSliders();
         renderImportStatus();
         if(diagHtml){const el=document.getElementById('import-status');if(el)el.innerHTML+=diagHtml;}
@@ -106,6 +111,8 @@ function _applyImportBurned(kcal){
   getDay(getTodayKey()).burned=kcal;saveDaily();
   lastHealthImportValues=Object.assign(lastHealthImportValues||{},{burned:kcal});
   lastHealthImportDate=getTodayKey();
+  watchAvailable=true;
+  stagesAvailable=!!(lastHealthImportValues?.sleepStages);
   saveAll();updateAll();lockSliders();renderImportStatus();
 }
 function _applyImportNonCalorie(imported){
@@ -120,6 +127,8 @@ function _applyImportNonCalorie(imported){
   }
   if(Object.keys(meta).length){
     lastHealthImportValues=meta;lastHealthImportDate=getTodayKey();
+    watchAvailable=true;
+    stagesAvailable=!!(lastHealthImportValues?.sleepStages);
     saveAll();updateAll();lockSliders();
   }
 }
@@ -224,6 +233,7 @@ function clearTodayWatchImport(){
     getDay(today).burned=0;saveDaily();
     slidersLocked=false;applyLockState();
     lastHealthImportDate=null;lastHealthImportValues=null;
+    watchAvailable=false;stagesAvailable=false;
     saveAll();renderImportStatus();
     renderDashboard();renderNutrition();
     document.getElementById('import-status').innerHTML=

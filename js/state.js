@@ -1,6 +1,9 @@
 // ════════════════════════════════════════════
 // STATE
 // ════════════════════════════════════════════
+let watchAvailable=false;
+let stagesAvailable=false;
+
 let currentGoal='bulk';
 let logDateOffset=0;
 let painMap={};

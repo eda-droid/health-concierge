@@ -5,11 +5,53 @@ function setUIMode(mode){
   globalUIMode=mode;
   lsSet('vitale_ui_mode',mode);
   _applyModeToggleUI();
+  window.scrollTo(0,0);
   renderDashboard();
   if(typeof renderWeeklyReview==='function')renderWeeklyReview();
 }
 function _applyModeToggleUI(){
   document.querySelectorAll('.ui-mode-toggle .mode-btn').forEach(b=>b.classList.toggle('active',b.dataset.mode===globalUIMode));
+}
+
+// ════════════════════════════════════════════
+// CENTRAL DATA BUILDER
+// ════════════════════════════════════════════
+function _buildDashData(){
+  const c=computeAll();
+  const dk=getTodayKey();
+  const day=getDay(dk);
+  const todayIdx=(new Date().getDay()+6)%7;
+  const hour=new Date().getHours();
+  const greeting=(hour<11?'Guten Morgen':hour<18?'Guten Tag':'Guten Abend')+' — '+daysFull[todayIdx];
+
+  let trainLabel,trainSub;
+  if(trainingMode==='advanced'&&customPlan){
+    trainLabel=customPlan[todayIdx]?customPlan[todayIdx].title:'Eigener Plan';
+    trainSub='Dein eigener Trainingsplan';
+  } else {
+    const plan=weekPlanState||getWeekPlan(c.recovery);
+    const wt=plan[todayIdx];
+    const wp=workoutPlans[wt]||workoutPlans.rest;
+    trainLabel=wt==='rest'?'Ruhetag':wt==='recovery'?'Aktive Erholung':wp.label;
+    trainSub=wt==='rest'?'Heute regenerieren':wt==='recovery'?'Leichte Bewegung':c.recovery>=75?'Schwere Session — Push it!':'Moderate Session — kontrollierte Intensität';
+  }
+
+  const meals=getDayMeals(dk);
+  const eaten=meals.reduce((a,m)=>a+m.kcal,0);
+  const burned=parseInt(day.burned)||0;
+  const remain=Math.round(c.goalKcal-eaten);
+  const eatenPct=Math.min(100,Math.round(eaten/c.goalKcal*100));
+  const prot=Math.round(meals.reduce((a,m)=>a+(m.protein||0),0));
+  const carbs=Math.round(meals.reduce((a,m)=>a+(m.carbs||0),0));
+  const fat=Math.round(meals.reduce((a,m)=>a+(m.fat||0),0));
+  const rColor=c.recovery>=75?'#00E5A0':c.recovery>=50?'#FFAD33':'#FF5757';
+
+  let aiMsg='';
+  if(c.recovery>=75) aiMsg=`<strong>Recovery ${c.recovery}/100 — Top.</strong> Heute ist ${trainLabel} optimal. Kalorienziel ${c.goalKcal.toLocaleString('de-DE')} kcal. Noch ${remain.toLocaleString('de-DE')} kcal verfügbar.`;
+  else if(c.recovery>=50) aiMsg=`<strong>Recovery ${c.recovery}/100 — Moderat.</strong> Session auf 80% Intensität. Kalorienziel ${c.goalKcal.toLocaleString('de-DE')} kcal.`;
+  else aiMsg=`<strong>Recovery ${c.recovery}/100 — Kritisch.</strong> Heute Erholung statt schwerem Training. Kalorien auf Erhalt angepasst.`;
+
+  return{c,dk,day,greeting,trainLabel,trainSub,rColor,goalKcal:c.goalKcal,eaten,burned,remain,eatenPct,prot,carbs,fat,hour,aiMsg};
 }
 
 // ════════════════════════════════════════════
@@ -26,8 +68,14 @@ function _macroRowHtml(prot,carbs,fat){
     <span><span class="macro-dot" style="background:#9B7FFF;"></span><span style="color:var(--text2);">F</span> <span style="color:var(--text);font-weight:600;">${fat}g</span></span>
   </div>`;
 }
-function _kcalCardHtml(d,withMacros){
+function _kcalCardHtml(d,withMacros,withProteinRow){
   const {goalKcal,eaten,remain,eatenPct,prot,carbs,fat}=d;
+  let protRow='';
+  if(withProteinRow){
+    const pr=proteinGoalReached();
+    const check=pr.reached?` <span style="color:var(--accent);">✓</span>`:'';
+    protRow=`<div style="margin-top:8px;font-size:12px;color:var(--text2);">Protein: <strong style="color:var(--info);">${pr.eaten}g</strong> / ${pr.target}g${check}</div>`;
+  }
   return`<div class="card home-kcal-card">
     <div class="card-label-mono">🥗 ERNÄHRUNG HEUTE</div>
     <div class="home-kcal-3">
@@ -36,27 +84,56 @@ function _kcalCardHtml(d,withMacros){
       <div><div class="home-kcal-val" id="k-remain" style="color:${remain<0?'var(--danger)':'var(--info)'};">${remain.toLocaleString('de-DE')}</div><div class="home-kcal-lbl">Verbleibend</div></div>
     </div>
     <div class="kcal-bar" id="kcal-bar">${_kcalBarHtml(eatenPct,eaten,goalKcal)}</div>
+    ${protRow}
     ${withMacros?_macroRowHtml(prot,carbs,fat):''}
   </div>`;
 }
 function _bedtimeBannerHtml(hour){
   if(hour<21)return'';
+  const bt=appState.bedTime||'23:00';
   return`<div class="bedtime-banner-inline">
     <span style="font-size:20px;">🌙</span>
-    <div><div style="font-size:13px;font-weight:600;">Schlafenszeit nähert sich</div><div style="font-size:11px;color:var(--text2);margin-top:2px;">Ziel: 22:30 Uhr schlafen gehen</div></div>
+    <div style="font-size:13px;font-weight:600;">Ziel-Schlafzeit ${bt} — Jetzt runterkommen.</div>
+  </div>`;
+}
+function _waterCardHtml(){
+  return`<div class="card">
+    <div class="card-header">
+      <div class="card-label">Wasser</div>
+      <div style="display:flex;align-items:baseline;gap:4px;">
+        <span style="font-size:20px;font-weight:700;color:var(--water);" id="water-amount">0,0 L</span>
+        <span style="font-size:11px;color:var(--muted);" id="water-goal-lbl">/ 2,8 L</span>
+      </div>
+    </div>
+    <div class="water-glass-row" id="water-glasses"></div>
+    <div style="display:flex;gap:8px;margin-top:10px;">
+      <button class="water-btn" onclick="addWater(200)">+ Glas 200ml</button>
+      <button class="water-btn" onclick="addWater(500)" style="background:rgba(56,196,245,0.7);">+ Flasche 500ml</button>
+      <button class="water-btn minus-btn" onclick="addWater(-200)">−</button>
+    </div>
   </div>`;
 }
 function _weeklySlot(){return`<div class="card" id="weekly-review-card"></div>`;}
 function _aiBox(msg){return`<div class="ai-box"><div class="ai-chip">⚡ KI ANALYSE</div><div id="ai-recommendation">${msg}</div></div>`;}
-function _logBtn(){return`<button class="hero-log-btn" onclick="document.querySelectorAll('.tab')[1]?.click()">Log →</button>`;}
+function _logBtn(){return`<button class="hero-log-btn" onclick="document.querySelectorAll('.bottom-tab')[1]?.click()">Log →</button>`;}
 
 // ════════════════════════════════════════════
 // MODUS 1: 🚶 BASIC
 // ════════════════════════════════════════════
 function renderBasicHome(d){
+  if(!d)d=_buildDashData();
   const el=document.getElementById('home-render');if(!el)return;
-  const {greeting,trainLabel,trainSub,hour,aiMsg}=d;
+  const {greeting,trainLabel,trainSub,hour}=d;
+  const dk=getTodayKey();
+  const today=getDay(dk);
+  const currentMood=today.mood;
+  const sleepHours=today.sleepHours!=null?today.sleepHours:'';
+  const streak=getTrainingStreak();
+  const week=getWeekTrainingDays();
+  const lift=getBestLiftThisWeek();
+
   el.innerHTML=`
+    ${_bedtimeBannerHtml(hour)}
     <div class="hero-card" style="background:linear-gradient(145deg,var(--card),var(--card2));">
       <div class="hero-greet">${greeting}</div>
       <div class="hero-session-row" style="margin-top:10px;">
@@ -65,25 +142,27 @@ function renderBasicHome(d){
       </div>
       <div class="hero-sub" id="dash-training-sub" style="margin-top:6px;">${trainSub}</div>
     </div>
-    ${_bedtimeBannerHtml(hour)}
-    ${_kcalCardHtml(d,true)}
     <div class="card">
-      <div class="card-header">
-        <div class="card-label">Wasser</div>
-        <div style="display:flex;align-items:baseline;gap:4px;">
-          <span style="font-size:20px;font-weight:700;color:var(--water);" id="water-amount">0,0 L</span>
-          <span style="font-size:11px;color:var(--muted);" id="water-goal-lbl">/ 2,8 L</span>
-        </div>
+      <div class="card-label" style="margin-bottom:10px;">Wie fühlst du dich heute?</div>
+      <div class="mood-stars">
+        ${[1,2,3,4,5].map(n=>`<span class="mood-star${currentMood===n?' active':''}" onclick="saveMood(${n})">⭐</span>`).join('')}
       </div>
-      <div class="water-glass-row" id="water-glasses"></div>
-      <div style="display:flex;gap:8px;margin-top:10px;">
-        <button class="water-btn" onclick="addWater(200)">+ Glas 200ml</button>
-        <button class="water-btn" onclick="addWater(500)" style="background:rgba(56,196,245,0.7);">+ Flasche 500ml</button>
-        <button class="water-btn minus-btn" onclick="addWater(-200)">−</button>
+      <div style="margin-top:12px;">
+        <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:6px;">🌙 Schlaf gestern Nacht</label>
+        <input type="number" min="3" max="12" step="0.5" placeholder="7.5"
+          value="${sleepHours}" onchange="saveSleepHours(this.value)"
+          style="width:120px;background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:7px 10px;color:var(--text);text-align:center;">
       </div>
     </div>
+    <div class="streak-card">
+      <div style="font-size:14px;font-weight:600;">${streak>0?'🔥 '+streak+' Tage Streak · '+week+'/3 diese Woche':'Noch kein Streak — heute trainieren!'}</div>
+      ${week>=3?'<span class="badge badge-green" style="white-space:nowrap;flex-shrink:0;">✓ Wochenziel erreicht!</span>':''}
+    </div>
+    ${_kcalCardHtml(d,true,true)}
+    ${_waterCardHtml()}
     ${_weeklySlot()}
-    ${_aiBox(aiMsg)}`;
+    ${lift.kg>0?`<div class="best-lift-card">💪 Stärkster Lift diese Woche: <strong style="color:var(--text);">${lift.name}</strong> · ${lift.kg} kg</div>`:''}
+  `;
   renderWater();
   if(typeof renderWeeklyReview==='function')renderWeeklyReview();
 }
@@ -92,16 +171,45 @@ function renderBasicHome(d){
 // MODUS 2: 🌱 EINSTEIGER
 // ════════════════════════════════════════════
 function renderBeginnerHome(d){
+  if(!d)d=_buildDashData();
   const el=document.getElementById('home-render');if(!el)return;
   const {c,greeting,trainLabel,trainSub,rColor,goalKcal,eaten,eatenPct,prot,carbs,fat,hour,aiMsg}=d;
+
+  // ── No Watch connected yet
+  if(!watchAvailable){
+    el.innerHTML=`
+      <div class="hero-card" style="background:linear-gradient(145deg,var(--card),var(--card2));">
+        <div class="hero-greet">${greeting}</div>
+        <div class="hero-session-row" style="margin-top:10px;">
+          <span class="hero-title" id="dash-training">${trainLabel}</span>
+          ${_logBtn()}
+        </div>
+        <div class="hero-sub" id="dash-training-sub" style="margin-top:6px;">${trainSub}</div>
+      </div>
+      <div class="card">
+        <div class="card-label" style="margin-bottom:8px;">⌚ Apple Watch verbinden</div>
+        <p style="font-size:12px;color:var(--muted);line-height:1.65;margin-bottom:14px;">Importiere deine Gesundheitsdaten für Recovery, HRV & Schlaf.</p>
+        <button class="btn-primary" style="width:100%;" onclick="document.getElementById('health-file').click()">Daten importieren →</button>
+      </div>
+      ${_kcalCardHtml(d,true,true)}
+      ${_waterCardHtml()}
+      ${_weeklySlot()}
+    `;
+    renderWater();
+    if(typeof renderWeeklyReview==='function')renderWeeklyReview();
+    return;
+  }
+
+  // ── Watch available: full Einsteiger layout
   const circ=226,off=Math.round(circ-circ*c.recovery/100);
   const tc=132;
   const slp=Math.round(c.s.sleep*10);
-  const sCol=slp>=70?'#9B7FFF':slp>=50?'#FFAD33':'#FF5757';
+  const sCol=slp>=70?'#9B7FFF':slp>=50?'var(--warn)':'var(--danger)';
   const netE=eaten-goalKcal,nCol=netE<=0?'var(--accent)':'var(--warn)';
   const recLbl=c.recovery>=75?'Optimal':c.recovery>=50?'Moderat':'Kritisch';
   const badgeCls=c.recovery>=75?'badge-green':c.recovery>=50?'badge-yellow':'badge-red';
   el.innerHTML=`
+    ${_bedtimeBannerHtml(hour)}
     <div class="hero-card">
       <div class="hero-glow" style="background:radial-gradient(ellipse at top right,${rColor}12 0%,transparent 65%);"></div>
       <div class="hero-greet">${greeting}</div>
@@ -120,7 +228,6 @@ function renderBeginnerHome(d){
       </div>
       <div class="hero-badge-row" id="recovery-badge"><span class="badge ${badgeCls}">${recLbl}</span></div>
     </div>
-    ${_bedtimeBannerHtml(hour)}
     <div class="tiles-grid">
       <div class="tile">
         <div class="tile-glow" style="background:radial-gradient(circle,${rColor}22 0%,transparent 70%);"></div>
@@ -162,8 +269,10 @@ function renderBeginnerHome(d){
       </div>
     </div>
     ${_weeklySlot()}
-    ${_kcalCardHtml(d,true)}
+    ${_kcalCardHtml(d,true,true)}
+    ${_waterCardHtml()}
     ${_aiBox(aiMsg)}`;
+  renderWater();
   if(typeof renderWeeklyReview==='function')renderWeeklyReview();
 }
 
@@ -293,6 +402,7 @@ function _advKcalCardHtml(d){
 // MODUS 3: ⚡ ADVANCED
 // ════════════════════════════════════════════
 function renderAdvancedHome(d){
+  if(!d)d=_buildDashData();
   const el=document.getElementById('home-render');if(!el)return;
   const {c,greeting,trainLabel,trainSub,rColor,eaten,goalKcal,eatenPct,hour,aiMsg}=d;
   const circ=226,off=Math.round(circ-circ*c.recovery/100);
