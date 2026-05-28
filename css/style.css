@@ -1,4 +1,6 @@
 *{box-sizing:border-box;margin:0;padding:0;}
+/* Prevent iOS auto-zoom on input focus (requires font-size ≥ 16px) */
+input,select,textarea{font-size:16px!important;}
 :root{
   --accent:#00E5A0;
   --accent-dim:rgba(0,229,160,0.1);
