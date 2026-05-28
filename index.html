@@ -19,20 +19,16 @@
       <div class="logo-tagline">KI · Muskelaufbau · Apple Watch</div>
     </div>
   </div>
-  <div class="ui-mode-toggle">
-    <button class="mode-btn" data-mode="basic" onclick="setUIMode('basic')">🚶</button>
-    <button class="mode-btn active" data-mode="beginner" onclick="setUIMode('beginner')">🌱</button>
-    <button class="mode-btn" data-mode="advanced" onclick="setUIMode('advanced')">⚡</button>
-  </div>
   <div class="status-pill"><div class="pulse"></div><span>KI aktiv</span></div>
 </header>
 
-<!-- TABS -->
+<!-- TABS (desktop ≥1024px) -->
 <div class="nav-tabs">
-  <button class="tab active" onclick="switchTab('home',this)"><span class="tab-icon">⚡</span>Heute</button>
-  <button class="tab" onclick="switchTab('training',this)"><span class="tab-icon">🏋️</span>Training</button>
-  <button class="tab" onclick="switchTab('nutrition',this)"><span class="tab-icon">🥗</span>Ernährung</button>
-  <button class="tab" onclick="switchTab('profile',this)"><span class="tab-icon">👤</span>Profil & Körper</button>
+  <button class="bottom-tab active" onclick="switchTab('home',this)"><span class="bottom-tab-icon">⚡</span>Heute</button>
+  <button class="bottom-tab" onclick="switchTab('training',this)"><span class="bottom-tab-icon">🏋️</span>Training</button>
+  <button class="bottom-tab" onclick="switchTab('nutrition',this)"><span class="bottom-tab-icon">🥗</span>Ernährung</button>
+  <button class="bottom-tab" onclick="switchTab('profile',this)"><span class="bottom-tab-icon">👤</span>Profil & Körper</button>
+  <button class="bottom-tab" onclick="switchTab('settings',this)"><span class="bottom-tab-icon">⚙️</span>Einstellungen</button>
 </div>
 
 <!-- ═══════════ HEUTE ═══════════ -->
@@ -165,8 +161,8 @@
           <input type="number" id="meal-carbs" placeholder="70" inputmode="numeric" min="0" style="background:var(--card);border:1px solid rgba(255,173,51,0.3);border-radius:8px;padding:8px;color:var(--text);font-size:14px;font-family:'DM Mono',monospace;outline:none;text-align:center;width:100%;transition:border-color .18s;" onfocus="this.style.borderColor='var(--warn)'" onblur="this.style.borderColor='rgba(255,173,51,0.3)'">
         </div>
         <div class="form-group">
-          <label style="color:#EC4899;">FETT g</label>
-          <input type="number" id="meal-fat" placeholder="15" inputmode="numeric" min="0" style="background:var(--card);border:1px solid rgba(236,72,153,0.3);border-radius:8px;padding:8px;color:var(--text);font-size:14px;font-family:'DM Mono',monospace;outline:none;text-align:center;width:100%;transition:border-color .18s;" onfocus="this.style.borderColor='#EC4899'" onblur="this.style.borderColor='rgba(236,72,153,0.3)'">
+          <label style="color:#9B7FFF;">FETT g</label>
+          <input type="number" id="meal-fat" placeholder="15" inputmode="numeric" min="0" style="background:var(--card);border:1px solid rgba(155,127,255,0.3);border-radius:8px;padding:8px;color:var(--text);font-size:14px;font-family:'DM Mono',monospace;outline:none;text-align:center;width:100%;transition:border-color .18s;" onfocus="this.style.borderColor='#9B7FFF'" onblur="this.style.borderColor='rgba(155,127,255,0.3)'">
         </div>
       </div>
       <div style="font-size:10px;color:var(--muted);margin-bottom:8px;font-family:'DM Mono',monospace;" id="meal-auto-kcal"></div>
@@ -190,11 +186,11 @@
 
   <div class="card">
     <div class="card-label" style="margin-bottom:12px;">Makro-Verteilung (zielangepasst)</div>
-    <div class="macro-bar" id="macro-bar"><div style="width:33%;background:var(--info);border-radius:4px 0 0 4px;"></div><div style="width:42%;background:var(--warn);"></div><div style="width:25%;background:#EC4899;border-radius:0 4px 4px 0;"></div></div>
+    <div class="macro-bar" id="macro-bar"><div style="width:33%;background:var(--info);border-radius:4px 0 0 4px;"></div><div style="width:42%;background:var(--warn);"></div><div style="width:25%;background:#9B7FFF;border-radius:0 4px 4px 0;"></div></div>
     <div style="display:flex;gap:14px;font-size:11px;margin-bottom:14px;font-family:'DM Mono',monospace;">
       <span style="color:var(--info);">■ Protein</span>
       <span style="color:var(--warn);">■ Kohlenhydrate</span>
-      <span style="color:#EC4899;">■ Fett</span>
+      <span style="color:#9B7FFF;">■ Fett</span>
     </div>
     <div id="macro-details"></div>
   </div>
@@ -259,7 +255,6 @@
   <div class="sub-tabs">
     <button class="sub-tab" data-group="profile" data-name="profil" onclick="switchSubTab('profile','profil')">Profil</button>
     <button class="sub-tab" data-group="profile" data-name="koerper" onclick="switchSubTab('profile','koerper')">Körper</button>
-    <button class="sub-tab" data-group="profile" data-name="zyklen" onclick="switchSubTab('profile','zyklen')">Zyklen</button>
   </div>
 
   <!-- ── SUB: PROFIL ── -->
@@ -341,26 +336,6 @@
       </div>
     </div>
 
-    <div class="card">
-      <div class="card-label" style="margin-bottom:8px;">Apple Watch Daten importieren</div>
-      <p style="font-size:12px;color:var(--muted);line-height:1.65;margin-bottom:14px;">Exportiere mit <strong style="color:var(--text);">"Health Auto Export"</strong> (App Store) deine Daten als CSV/JSON. HRV, Ruhepuls, Schlaf, Schritte und <strong style="color:var(--text);">Aktive Kalorien</strong> werden übernommen und sperren die Regler für heute.</p>
-      <div style="margin-bottom:14px;">
-        <div style="font-size:10px;color:var(--muted);font-family:'DM Mono',monospace;letter-spacing:.07em;text-transform:uppercase;margin-bottom:8px;">Energie-Einheit in deiner Export-Datei</div>
-        <div class="mode-selector" style="margin-bottom:0;">
-          <button class="mode-btn active" id="unit-kcal" onclick="setHealthEnergyUnit('kcal')">kcal<span style="display:block;font-size:10px;font-weight:400;color:var(--muted);">direkt übernehmen</span></button>
-          <button class="mode-btn" id="unit-kj" onclick="setHealthEnergyUnit('kj')">kJ<span style="display:block;font-size:10px;font-weight:400;color:var(--muted);">÷ 4,18 → kcal</span></button>
-        </div>
-      </div>
-      <div class="import-zone" onclick="document.getElementById('health-file').click()">
-        <div style="font-size:32px;margin-bottom:10px;">⌚</div>
-        <div style="font-size:13px;font-weight:600;">Health-Datei hochladen</div>
-        <div style="font-size:11px;color:var(--muted);margin-top:4px;">CSV oder JSON · HRV, Ruhepuls, Schlaf, Schritte, Aktive Kalorien</div>
-      </div>
-      <input type="file" id="health-file" accept=".csv,.json" style="display:none;" onchange="importHealthFile(event)">
-      <div id="import-status" style="margin-top:10px;font-size:12px;"></div>
-      <button class="btn-ghost" style="margin-top:10px;width:100%;color:var(--danger);border-color:rgba(255,87,87,0.3);" onclick="clearTodayWatchImport()">🗑 Heutigen Watch-Import löschen</button>
-    </div>
-
   </div><!-- /sub profil -->
 
   <!-- ── SUB: KÖRPER ── -->
@@ -425,18 +400,85 @@
 
   </div><!-- /sub koerper -->
 
-  <!-- ── SUB: ZYKLEN ── -->
-  <div class="sub-panel" data-group="profile" data-name="zyklen">
-
-    <div class="card">
-      <div class="card-label" style="margin-bottom:12px;">Deload-Zyklus</div>
-      <div id="deload-status"></div>
-      <button class="btn-ghost" style="margin-top:12px;width:100%;" onclick="resetDeloadCycle()">🔄 Neuen Trainingszyklus starten</button>
-    </div>
-
-  </div><!-- /sub zyklen -->
-
 </div>
+
+<!-- ═══════════ EINSTELLUNGEN ═══════════ -->
+<div id="settings" class="panel">
+
+  <!-- App-Modus -->
+  <div class="card">
+    <div class="card-label" style="margin-bottom:12px;">App-Modus</div>
+    <p style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.6;">Wähle die Detailtiefe der Home-Ansicht. Basic ist minimalistisch, Einsteiger zeigt Guides, Advanced alle Metriken.</p>
+    <div class="ui-mode-toggle" style="width:100%;">
+      <button class="mode-btn" data-mode="basic" onclick="setUIMode('basic')" style="flex:1;">🚶 Basic</button>
+      <button class="mode-btn active" data-mode="beginner" onclick="setUIMode('beginner')" style="flex:1;">🌱 Einsteiger</button>
+      <button class="mode-btn" data-mode="advanced" onclick="setUIMode('advanced')" style="flex:1;">⚡ Advanced</button>
+    </div>
+  </div>
+
+  <!-- Erscheinungsbild -->
+  <div class="card">
+    <div class="card-label" style="margin-bottom:12px;">Erscheinungsbild</div>
+    <div class="mode-selector" style="margin-bottom:0;">
+      <button class="mode-btn active" id="theme-dark" onclick="setTheme('dark')" style="flex:1;">🌙 Dark</button>
+      <button class="mode-btn" id="theme-light" onclick="setTheme('light')" style="flex:1;">☀️ Light</button>
+    </div>
+  </div>
+
+  <!-- Apple Watch Import -->
+  <div class="card">
+    <div class="card-label" style="margin-bottom:8px;">Apple Watch Daten importieren</div>
+    <p style="font-size:12px;color:var(--muted);line-height:1.65;margin-bottom:14px;">Exportiere mit <strong style="color:var(--text);">"Health Auto Export"</strong> (App Store) deine Daten als CSV/JSON. HRV, Ruhepuls, Schlaf, Schritte und <strong style="color:var(--text);">Aktive Kalorien</strong> werden übernommen und sperren die Regler für heute.</p>
+    <div style="margin-bottom:14px;">
+      <div style="font-size:10px;color:var(--muted);font-family:'DM Mono',monospace;letter-spacing:.07em;text-transform:uppercase;margin-bottom:8px;">Energie-Einheit in deiner Export-Datei</div>
+      <div class="mode-selector" style="margin-bottom:0;">
+        <button class="mode-btn active" id="unit-kcal" onclick="setHealthEnergyUnit('kcal')">kcal<span style="display:block;font-size:10px;font-weight:400;color:var(--muted);">direkt übernehmen</span></button>
+        <button class="mode-btn" id="unit-kj" onclick="setHealthEnergyUnit('kj')">kJ<span style="display:block;font-size:10px;font-weight:400;color:var(--muted);">÷ 4,18 → kcal</span></button>
+      </div>
+    </div>
+    <div class="import-zone" onclick="document.getElementById('health-file').click()">
+      <div style="font-size:32px;margin-bottom:10px;">⌚</div>
+      <div style="font-size:13px;font-weight:600;">Health-Datei hochladen</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:4px;">CSV oder JSON · HRV, Ruhepuls, Schlaf, Schritte, Aktive Kalorien</div>
+    </div>
+    <input type="file" id="health-file" accept=".csv,.json" style="display:none;" onchange="importHealthFile(event)">
+    <div id="import-status" style="margin-top:10px;font-size:12px;"></div>
+    <button class="btn-ghost" style="margin-top:10px;width:100%;color:var(--danger);border-color:rgba(255,87,87,0.3);" onclick="clearTodayWatchImport()">🗑 Heutigen Watch-Import löschen</button>
+  </div>
+
+  <!-- Deload-Zyklus -->
+  <div class="card">
+    <div class="card-label" style="margin-bottom:12px;">Deload-Zyklus</div>
+    <div id="deload-status"></div>
+    <button class="btn-ghost" style="margin-top:12px;width:100%;" onclick="resetDeloadCycle()">🔄 Neuen Trainingszyklus starten</button>
+  </div>
+
+</div><!-- /settings -->
+
+<!-- BOTTOM NAV -->
+<nav class="bottom-nav">
+  <button class="bottom-tab active" onclick="switchTab('home',this)">
+    <span class="bottom-tab-icon">🏠</span>
+    <span class="bottom-tab-label">Heute</span>
+  </button>
+  <button class="bottom-tab" onclick="switchTab('training',this)">
+    <span class="bottom-tab-icon">💪</span>
+    <span class="bottom-tab-label">Training</span>
+  </button>
+  <button class="bottom-tab" onclick="switchTab('nutrition',this)">
+    <span class="bottom-tab-icon">🥗</span>
+    <span class="bottom-tab-label">Ernährung</span>
+  </button>
+  <button class="bottom-tab" onclick="switchTab('profile',this)">
+    <span class="bottom-tab-icon">👤</span>
+    <span class="bottom-tab-label">Profil</span>
+  </button>
+  <button class="bottom-tab" onclick="switchTab('settings',this)">
+    <span class="bottom-tab-icon">⚙️</span>
+    <span class="bottom-tab-label">Einstellungen</span>
+  </button>
+</nav>
+
 </div><!-- /app -->
 
 <!-- SETUP MODAL -->

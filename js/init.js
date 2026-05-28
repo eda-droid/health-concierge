@@ -22,6 +22,9 @@ if(lastHealthImportDate&&lastHealthImportDate!==getTodayKey()){
   saveAll();
 }
 
+// Apply persisted theme on boot
+(function(){const t=lsGet('hc_theme','dark');if(t==='light')document.documentElement.setAttribute('data-theme','light');})();
+
 updateAll();
 renderLog();
 bindSetInputs();

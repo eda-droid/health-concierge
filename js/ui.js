@@ -2,14 +2,17 @@
 // TABS
 // ════════════════════════════════════════════
 function switchTab(id,el){
+  // Exit any open training edit view when leaving the training tab
+  if(id!=='training'&&typeof _resetTrainingEdit==='function')_resetTrainingEdit();
   document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
-  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.bottom-tab').forEach(t=>t.classList.remove('active'));
   document.getElementById(id).classList.add('active');
   el.classList.add('active');
   if(id==='training'){renderLog();renderWeekTab();}
-  if(id==='profile'){renderInjury();calcNavy();renderMeasureHistory();renderDeloadStatus();_initSubTabs('profile','profil');}
+  if(id==='profile'){renderInjury();calcNavy();renderMeasureHistory();_initSubTabs('profile','profil');}
   if(id==='home')renderDashboard();
   if(id==='nutrition')renderNutrition();
+  if(id==='settings'){renderDeloadStatus();_applyThemeUI();}
 }
 function toggleExpand(id){
   const el=document.getElementById(id);el.classList.toggle('open');
@@ -80,6 +83,22 @@ function showToast(msg,duration){
   t.classList.add('show');
   clearTimeout(t._tid);
   t._tid=setTimeout(()=>t.classList.remove('show'),duration||3500);
+}
+
+// ════════════════════════════════════════════
+// THEME (LIGHT / DARK)
+// ════════════════════════════════════════════
+function setTheme(t){
+  lsSet('hc_theme',t);
+  document.documentElement.setAttribute('data-theme',t==='light'?'light':'');
+  _applyThemeUI();
+  saveAll();
+}
+function _applyThemeUI(){
+  const t=lsGet('hc_theme','dark');
+  const bd=document.getElementById('theme-dark'),bl=document.getElementById('theme-light');
+  if(bd)bd.classList.toggle('active',t!=='light');
+  if(bl)bl.classList.toggle('active',t==='light');
 }
 
 // ════════════════════════════════════════════

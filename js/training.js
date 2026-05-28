@@ -1,7 +1,18 @@
 // ════════════════════════════════════════════
 // TRAINING MODE
 // ════════════════════════════════════════════
+
+// Reset any active edit-mode UI back to the neutral "tap a day" state.
+// Called before mode switches and when leaving the training tab.
+function _resetTrainingEdit(){
+  const sw=document.getElementById('selected-workout');
+  if(sw)sw.innerHTML='<div class="card-label">Wochenplan</div><p style="font-size:13px;color:var(--muted);">Tippe auf einen Tag für Details.</p>';
+  // Clear the day-card highlight so nothing looks selected after the reset
+  document.querySelectorAll('#week-grid .day-card').forEach(c=>c.classList.remove('today-card'));
+}
+
 function setTrainingMode(mode){
+  _resetTrainingEdit();   // exit any open edit view before switching mode
   if(mode==='advanced'&&!customPlan){
     customPlan=getWeekPlan(75).map(wt=>{const wp=workoutPlans[wt];return{title:wp.label,ex:wp.ex.map(e=>({name:e[0],scheme:e[2]}))};});
     saveCustomPlan();

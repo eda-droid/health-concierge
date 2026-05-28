@@ -23,7 +23,7 @@ function _macroRowHtml(prot,carbs,fat){
   return`<div class="home-macro-row">
     <span><span class="macro-dot" style="background:var(--info);"></span><span style="color:var(--text2);">P</span> <span style="color:var(--text);font-weight:600;">${prot}g</span></span>
     <span><span class="macro-dot" style="background:var(--warn);"></span><span style="color:var(--text2);">K</span> <span style="color:var(--text);font-weight:600;">${carbs}g</span></span>
-    <span><span class="macro-dot" style="background:#EC4899;"></span><span style="color:var(--text2);">F</span> <span style="color:var(--text);font-weight:600;">${fat}g</span></span>
+    <span><span class="macro-dot" style="background:#9B7FFF;"></span><span style="color:var(--text2);">F</span> <span style="color:var(--text);font-weight:600;">${fat}g</span></span>
   </div>`;
 }
 function _kcalCardHtml(d,withMacros){
@@ -114,7 +114,7 @@ function renderBeginnerHome(d){
           <div class="hero-sub" id="dash-training-sub">${trainSub}</div>
         </div>
         <div class="hero-ring">
-          <svg viewBox="0 0 88 88"><circle cx="44" cy="44" r="36" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="7"/><circle cx="44" cy="44" r="36" fill="none" stroke="${rColor}" stroke-width="7" stroke-linecap="round" stroke-dasharray="226" stroke-dashoffset="${off}" id="recovery-circle"/></svg>
+          <svg viewBox="0 0 88 88"><circle cx="44" cy="44" r="36" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="7"/><circle cx="44" cy="44" r="36" fill="none" stroke="${rColor}" stroke-width="7" stroke-linecap="round" stroke-dasharray="226" stroke-dashoffset="${off}" style="--ring-offset:${off}" class="recovery-circle" id="recovery-circle"/></svg>
           <div class="hero-ring-val"><span id="recovery-score" style="color:${rColor};font-size:18px;font-weight:700;">${c.recovery}</span><span class="hero-ring-unit">%</span></div>
         </div>
       </div>
@@ -127,7 +127,7 @@ function renderBeginnerHome(d){
         <div class="tile-label">◎ Recovery</div>
         <div class="tile-ring-row">
           <div class="tile-ring-wrap">
-            <svg viewBox="0 0 52 52"><circle cx="26" cy="26" r="21" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="5"/><circle cx="26" cy="26" r="21" fill="none" stroke="${rColor}" stroke-width="5" stroke-linecap="round" stroke-dasharray="132" stroke-dashoffset="${Math.round(tc-tc*c.recovery/100)}"/></svg>
+            <svg viewBox="0 0 52 52"><circle cx="26" cy="26" r="21" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="5"/><circle cx="26" cy="26" r="21" fill="none" stroke="${rColor}" stroke-width="5" stroke-linecap="round" stroke-dasharray="132" stroke-dashoffset="${Math.round(tc-tc*c.recovery/100)}" style="--ring-offset:${Math.round(tc-tc*c.recovery/100)}" class="recovery-circle"/></svg>
             <div class="tile-ring-inner" style="color:${rColor};">${c.recovery}</div>
           </div>
           <div><div class="tile-big"><span style="color:${rColor};">${c.recovery}</span><span class="tile-unit">%</span></div><div class="tile-sub">${recLbl}</div></div>
@@ -139,7 +139,7 @@ function renderBeginnerHome(d){
         <div class="tile-label">🌙 Schlaf</div>
         <div class="tile-ring-row">
           <div class="tile-ring-wrap">
-            <svg viewBox="0 0 52 52"><circle cx="26" cy="26" r="21" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="5"/><circle cx="26" cy="26" r="21" fill="none" stroke="${sCol}" stroke-width="5" stroke-linecap="round" stroke-dasharray="132" stroke-dashoffset="${Math.round(tc-tc*slp/100)}"/></svg>
+            <svg viewBox="0 0 52 52"><circle cx="26" cy="26" r="21" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="5"/><circle cx="26" cy="26" r="21" fill="none" stroke="${sCol}" stroke-width="5" stroke-linecap="round" stroke-dasharray="132" stroke-dashoffset="${Math.round(tc-tc*slp/100)}" style="--ring-offset:${Math.round(tc-tc*slp/100)}" class="recovery-circle"/></svg>
             <div class="tile-ring-inner" style="color:${sCol};">${slp}</div>
           </div>
           <div><div class="tile-big"><span style="color:${sCol};">${slp}</span><span class="tile-unit">%</span></div><div class="tile-sub">${c.s.sleep} / 10</div></div>
@@ -278,7 +278,7 @@ function _advKcalCardHtml(d){
     <div style="margin-top:14px;display:flex;flex-direction:column;gap:10px;">
       ${[{label:'Protein',g:prot,pct:protP,color:'var(--info)'},
          {label:'Kohlenhydrate',g:carbs,pct:carbP,color:'var(--warn)'},
-         {label:'Fett',g:fat,pct:fatP,color:'#EC4899'}].map(m=>`<div>
+         {label:'Fett',g:fat,pct:fatP,color:'#9B7FFF'}].map(m=>`<div>
         <div style="display:flex;justify-content:space-between;margin-bottom:5px;">
           <span style="font-size:12px;color:var(--text2);">${m.label}</span>
           <span style="font-size:12px;font-family:'DM Mono',monospace;color:${m.color};font-weight:600;">${m.g}g <span style="color:var(--muted);font-weight:400;">${m.pct}%</span></span>
@@ -308,7 +308,7 @@ function renderAdvancedHome(d){
         <div style="position:relative;width:72px;height:72px;flex-shrink:0;">
           <svg viewBox="0 0 88 88" style="position:absolute;inset:0;transform:rotate(-90deg);width:100%;height:100%;">
             <circle cx="44" cy="44" r="36" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="7"/>
-            <circle cx="44" cy="44" r="36" fill="none" stroke="${rColor}" stroke-width="7" stroke-linecap="round" stroke-dasharray="226" stroke-dashoffset="${off}" id="recovery-circle"/>
+            <circle cx="44" cy="44" r="36" fill="none" stroke="${rColor}" stroke-width="7" stroke-linecap="round" stroke-dasharray="226" stroke-dashoffset="${off}" style="--ring-offset:${off}" class="recovery-circle" id="recovery-circle"/>
           </svg>
           <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;">
             <span id="recovery-score" style="font-size:18px;font-weight:700;font-family:'DM Mono',monospace;color:${rColor};">${c.recovery}</span>
