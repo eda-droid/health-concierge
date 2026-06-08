@@ -76,6 +76,7 @@
 
   <div class="ai-box"><div class="ai-chip">📅 KI WOCHENPLAN</div><div id="week-status">Berechne...</div></div>
   <div class="week-grid" id="week-grid"></div>
+  <div id="volume-tracker" style="margin-top:10px;"></div>
   <div class="card" id="selected-workout"><div class="card-label">Wochenplan</div><p style="font-size:13px;color:var(--muted);">Tippe auf einen Tag für Details.</p></div>
 
   <!-- Log -->
@@ -455,6 +456,25 @@
     <div class="card-label" style="margin-bottom:12px;">Deload-Zyklus</div>
     <div id="deload-status"></div>
     <button class="btn-ghost" style="margin-top:12px;width:100%;" onclick="resetDeloadCycle()">🔄 Neuen Trainingszyklus starten</button>
+  </div>
+
+  <!-- Datensicherung -->
+  <div class="card">
+    <div class="card-label">Datensicherung</div>
+    <p style="font-size:12px;color:var(--muted);margin-bottom:12px;">
+      Vor dem Löschen des Lesezeichens immer exportieren.
+      Alle Logs, Messungen und PRs werden gesichert.
+    </p>
+    <button onclick="exportAllData()" class="btn-primary" style="width:100%;margin-bottom:8px;">
+      ↓ Daten exportieren
+    </button>
+    <label style="display:block;width:100%;">
+      <input type="file" accept=".json" onchange="importAllData(this.files[0])"
+             style="display:none" id="import-file-input">
+      <span class="btn-secondary" style="display:block;text-align:center;cursor:pointer;padding:10px;">
+        ↑ Daten importieren
+      </span>
+    </label>
   </div>
 
 </div><!-- /settings -->

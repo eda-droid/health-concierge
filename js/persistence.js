@@ -31,6 +31,45 @@ function saveAll(){
   lsSet('hc_state',appState);
 }
 
+// ════════════════════════════════════════════
+// DATA EXPORT / IMPORT
+// ════════════════════════════════════════════
+function exportAllData(){
+  saveAll();
+  const today=new Date().toISOString().slice(0,10);
+  const bundle={
+    v:2,exported:new Date().toISOString(),
+    logData,prData,dailyData,measureData,customPlan,appState
+  };
+  const blob=new Blob([JSON.stringify(bundle,null,2)],{type:'application/json'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='vitale-backup-'+today+'.json';
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+function importAllData(file){
+  if(!file)return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    try{
+      const data=JSON.parse(e.target.result);
+      if(!data.v||typeof data.logData!=='object')throw new Error('Ungültiges Format');
+      if(data.logData)lsSet('hc_log',data.logData);
+      if(data.prData)lsSet('hc_pr',data.prData);
+      if(data.dailyData)lsSet('hc_daily',data.dailyData);
+      if(data.measureData)lsSet('hc_measure',data.measureData);
+      if(data.customPlan)lsSet('hc_customplan',data.customPlan);
+      if(data.appState)lsSet('hc_state',data.appState);
+      showToast('✓ Daten wiederhergestellt — App wird neu geladen');
+      setTimeout(()=>window.location.reload(),600);
+    }catch(err){
+      showToast('⚠ Import fehlgeschlagen: '+err.message);
+    }
+  };
+  reader.readAsText(file);
+}
+
 function loadState(){
   if(!appState||!Object.keys(appState).length){appState={deloadStart:Date.now()};lsSet('hc_state',appState);setTimeout(()=>{if(typeof showToast==='function')showToast('Deload-Daten zurückgesetzt – Timer startet neu.');},800);return;}
   currentGoal=appState.goal||'bulk';

@@ -64,6 +64,13 @@ function pickMuscleGroup(dk,ei){
   btn.replaceWith(sel);
   sel.focus();
 }
+const VARIANTS=['','Maschine','Kabel'];
+function cycleVariant(dk,ei){
+  const ex=logData[dk].exercises[ei];
+  const i=VARIANTS.indexOf(ex.variant||'');
+  ex.variant=VARIANTS[(i+1)%VARIANTS.length];
+  saveLog();renderExercises(dk);
+}
 
 // Reset any active edit-mode UI back to the neutral "tap a day" state.
 // Called before mode switches and when leaving the training tab.
@@ -100,7 +107,7 @@ function renderWeekTab(recoveryOverride){
   const el=document.getElementById('week-grid');if(!el)return;
   const c=computeAll();
   const recovery=recoveryOverride!==undefined?recoveryOverride:c.recovery;
-  if(trainingMode==='advanced'&&customPlan){renderCustomWeekGrid();return;}
+  if(trainingMode==='advanced'&&customPlan){renderCustomWeekGrid();renderVolumeTracker();return;}
   const plan=getWeekPlan(recovery);
   const todayIdx=(new Date().getDay()+6)%7;
   el.innerHTML=plan.map((wt,i)=>{
@@ -117,6 +124,7 @@ function renderWeekTab(recoveryOverride){
 
   const ws=document.getElementById('week-status');
   if(ws)ws.innerHTML=recovery>=75?`<strong>Optimale Woche.</strong> 5 Trainingseinheiten geplant.`:recovery>=50?`<strong>Moderate Woche.</strong> 4 Einheiten, kürzere Sessions.`:`<strong>Erholungswoche.</strong> 2–3 leichte Einheiten.`;
+  renderVolumeTracker();
 }
 function showDayDetail(i,wt){
   document.querySelectorAll('#week-grid .day-card').forEach((c,j)=>c.classList.toggle('today-card',j===i));
@@ -212,7 +220,7 @@ function renderLog(){
   }
   logData[dk].planDay=logPlanDay;saveLog();
   renderExercises(dk);bindSetInputs();
-  renderWeekSummary();renderStrengthHistory();renderLogFeedback(dk);renderWeekFeedback();
+  renderWeekSummary();renderStrengthHistory();renderLogFeedback(dk);renderWeekFeedback();renderVolumeTracker();
 }
 function applyPlanDayToLog(dk,key){
   const hasData=ex=>ex.sets?.some(s=>parseFloat(s.kg)>0||parseInt(s.reps)>0);
@@ -240,7 +248,8 @@ function renderExercises(dk){
   const el=document.getElementById('exercise-log-list');if(!el)return;
   el.innerHTML='';
   (logData[dk]?.exercises||[]).forEach((ex,ei)=>{
-    const pr=prData[ex.name]||0;
+    const vKey=ex.variant?ex.name+'·'+ex.variant:ex.name;
+    const pr=prData[vKey]||prData[ex.name]||0;
     const maxKg=Math.max(0,...ex.sets.map(s=>parseFloat(s.kg)||0));
     const isNewPR=maxKg>0&&maxKg>=pr;
     const bestSet=ex.sets.reduce((best,s)=>{const kg=parseFloat(s.kg)||0,reps=parseInt(s.reps)||0;const orm=reps>1?kg*(1+reps/30):kg;return orm>best?orm:best;},0);
@@ -272,6 +281,10 @@ function renderExercises(dk){
         ?`<button id="mg-btn-${sid}-${ei}" onclick="event.stopPropagation();pickMuscleGroup('${dk}',${ei})" style="background:rgba(91,127,255,.12);color:var(--info);border:1px solid rgba(91,127,255,.2);font-size:9px;padding:2px 6px;border-radius:4px;cursor:pointer;font-family:inherit;">Muskel? ▾</button>`
         :'');
 
+    // ── VARIANT BADGE ─────────────────────────────────────
+    const vLabel=ex.variant||'';
+    const variantBtn=`<button onclick="event.stopPropagation();cycleVariant('${dk}',${ei})" style="background:rgba(91,127,255,${vLabel?'.15':'.06'});border:1px solid rgba(91,127,255,${vLabel?'.35':'.15'});color:${vLabel?'var(--info)':'var(--muted)'};border-radius:6px;font-size:10px;padding:2px 7px;cursor:pointer;font-family:'DM Mono',monospace;">${vLabel||'Freihanteln'} ▾</button>`;
+
     // ── HISTORY + SPARKLINE ───────────────────────────────
     const hist=getExerciseHistory(ex.name,10);
     const histPoints=[...hist].reverse().map(h=>({x:h.date,y:h.maxKg}));
@@ -282,7 +295,7 @@ function renderExercises(dk){
         :'';
 
     const histOpen=_openHistories.has(ex.name);
-    const prKg=prData[ex.name]||0;
+    const prKg=prData[vKey]||prData[ex.name]||0;
     let histRows='';
     if(hist.length){
       histRows=hist.map(h=>{
@@ -319,8 +332,10 @@ function renderExercises(dk){
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
           <span style="font-weight:600;font-size:14px;">${ex.name}</span>
           ${mgBadge}
+          ${variantBtn}
           ${ex.scheme?`<span style="font-size:10px;color:var(--muted);font-family:'DM Mono',monospace;">${ex.scheme}</span>`:''}
           ${isNewPR&&maxKg>0?'<span class="badge badge-yellow">🏆 PR!</span>':''}
+          ${(()=>{const sug=getOverloadSuggestion(ex);return sug?`<span style="font-size:10px;color:var(--info);font-family:'DM Mono',monospace;background:rgba(91,127,255,.08);border:1px solid rgba(91,127,255,.15);border-radius:6px;padding:2px 8px;">${sug}</span>`:''})()}
         </div>
         <div style="display:flex;align-items:center;gap:10px;">
           <span id="chev-${sid}" style="font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);user-select:none;">${histOpen?'▲':'▼'}</span>
@@ -362,8 +377,9 @@ function commitSet(dk,ei,si,field,v){
   if(!logData[dk]||!logData[dk].exercises[ei])return;
   logData[dk].exercises[ei].sets[si][field]=v;
   const ex=logData[dk].exercises[ei];const maxKg=Math.max(0,...ex.sets.map(s=>parseFloat(s.kg)||0));
-  if(maxKg>0&&maxKg>(prData[ex.name]||0))prData[ex.name]=maxKg;
-  saveLog();renderExercises(dk);bindSetInputs();renderWeekSummary();renderLogFeedback(dk);renderStrengthHistory();renderWeekFeedback();
+  const vKey=ex.variant?ex.name+'·'+ex.variant:ex.name;
+  if(maxKg>0&&maxKg>(prData[vKey]||0))prData[vKey]=maxKg;
+  saveLog();renderExercises(dk);bindSetInputs();renderWeekSummary();renderLogFeedback(dk);renderStrengthHistory();renderWeekFeedback();renderVolumeTracker();
 }
 function addSet(dk,ei){logData[dk].exercises[ei].sets.push({kg:'',reps:''});saveLog();renderExercises(dk);bindSetInputs();}
 function removeSet(dk,ei,si){if(logData[dk].exercises[ei].sets.length>1){logData[dk].exercises[ei].sets.splice(si,1);saveLog();renderExercises(dk);bindSetInputs();}}
@@ -474,6 +490,78 @@ function renderSleepAnalysis(sleepData){
   if(total>540)advice+='😴 Über 9 Stunden kann auf Schlafprobleme hinweisen. ';
   if(!advice)advice='✓ Schlafprofil optimal. Recovery maximiert.';
   document.getElementById('sleep-advice').innerHTML=advice;
+}
+
+// ════════════════════════════════════════════
+// PROGRESSIVE OVERLOAD
+// ════════════════════════════════════════════
+function getLastSession(name){
+  for(let i=1;i<=60;i++){
+    const dk=getDateKey(-i),day=logData[dk];if(!day)continue;
+    const ex=day.exercises?.find(e=>e.name===name);if(!ex)continue;
+    const valid=ex.sets.filter(s=>parseFloat(s.kg)>0&&parseInt(s.reps)>0);
+    if(!valid.length)continue;
+    const best=valid.reduce((b,s)=>parseFloat(s.kg)>(parseFloat(b.kg)||0)?s:b,valid[0]);
+    return{maxKg:parseFloat(best.kg),bestReps:parseInt(best.reps),date:dk};
+  }
+  return null;
+}
+function getOverloadSuggestion(ex){
+  if(!ex.sets.every(s=>!s.kg&&!s.reps))return null;
+  const last=getLastSession(ex.name);if(!last)return null;
+  const m=(ex.scheme||'').match(/[×x].*?(\d+)\s*[-–]?\s*(\d+)?/);
+  const schemeMax=m?parseInt(m[2]||m[1]):null;
+  if(schemeMax&&last.bestReps>=schemeMax){
+    const nextKg=Math.round((last.maxKg+2.5)*2)/2;
+    return`↑ ${last.maxKg} kg × ${last.bestReps} erreicht → Ziel: <strong>${nextKg} kg</strong>`;
+  }
+  return`↑ Letztes Mal ${last.maxKg} kg × ${last.bestReps} → Ziel: <strong>× ${last.bestReps+1}</strong>`;
+}
+
+// ════════════════════════════════════════════
+// WEEKLY VOLUME TRACKER
+// ════════════════════════════════════════════
+const VOLUME_TARGETS={
+  'Brust':10,'Rücken':12,'Schulter':10,
+  'Bizeps':8,'Trizeps':8,'Core':6,
+  'Quadrizeps':10,'Hamstrings':8,'Gesäß':12,'Waden':6
+};
+function getWeeklyVolume(){
+  const vol={};
+  for(let i=-6;i<=0;i++){
+    const dk=getDateKey(i),d=logData[dk];if(!d)continue;
+    d.exercises.forEach(ex=>{
+      const mg=ex.muscleGroup||(typeof getMuscleGroup==='function'?getMuscleGroup(ex.name):'')||'';
+      if(!mg)return;
+      const count=ex.sets.filter(s=>parseFloat(s.kg)>0&&parseInt(s.reps)>0).length;
+      if(count>0)vol[mg]=(vol[mg]||0)+count;
+    });
+  }
+  return vol;
+}
+function renderVolumeTracker(){
+  const el=document.getElementById('volume-tracker');if(!el)return;
+  const vol=getWeeklyVolume();
+  const entries=Object.entries(vol).sort((a,b)=>b[1]-a[1]);
+  if(!entries.length){el.innerHTML='';return;}
+  const rows=entries.map(([group,count])=>{
+    const target=VOLUME_TARGETS[group]||10;
+    const pct=Math.min(100,Math.round(count/target*100));
+    const color=count>=target?'var(--accent)':count>=target*0.5?'var(--warn)':'var(--danger)';
+    return'<div>'
+      +'<div style="display:flex;justify-content:space-between;margin-bottom:6px;">'
+        +'<span style="font-size:11px;">'+group+'</span>'
+        +'<span style="font-family:\'DM Mono\',monospace;font-size:10px;color:'+color+';">'+count+' / '+target+' Sätze</span>'
+      +'</div>'
+      +'<div style="height:3px;background:var(--border);border-radius:2px;margin-bottom:10px;">'
+        +'<div style="width:'+pct+'%;height:3px;background:'+color+';border-radius:2px;transition:width .4s ease;"></div>'
+      +'</div>'
+    +'</div>';
+  }).join('');
+  el.innerHTML='<div style="background:var(--surface);border-radius:12px;padding:16px;">'
+    +'<div style="font-size:10px;color:var(--muted);font-family:\'DM Mono\',monospace;letter-spacing:.07em;margin-bottom:12px;">WOCHENVOLUMEN</div>'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:0 16px;">'+rows+'</div>'
+    +'</div>';
 }
 
 function renderWeekSummary(){
