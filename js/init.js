@@ -41,12 +41,19 @@ document.addEventListener('DOMContentLoaded',function(){calcNavy();_initSubTabs(
 // ════════════════════════════════════════════
 const HEALTH_SECRET='dein-geheimnis-passwort';
 async function autoFetchWatch(){
+  const url='https://health-vitale.vercel.app/api/health?secret='+HEALTH_SECRET;
+  const ctrl=new AbortController();
+  const timer=setTimeout(()=>ctrl.abort(),5000);
   try{
-    const res=await fetch('https://health-vitale.vercel.app/api/health?secret='+HEALTH_SECRET,{signal:AbortSignal.timeout(3000)});
-    if(!res.ok)return;
+    const res=await fetch(url,{signal:ctrl.signal});
+    clearTimeout(timer);
+    if(!res.ok){console.warn('[Watch] API error:',res.status);return;}
     const data=await res.json();
     if(Object.keys(data).length)importHealthData(data);
-  }catch(e){}
+  }catch(e){
+    clearTimeout(timer);
+    if(e.name!=='AbortError')console.warn('[Watch] Fetch failed:',e.message);
+  }
 }
 autoFetchWatch();
-setInterval(autoFetchWatch,10*60*1000);
+setInterval(autoFetchWatch,15*60*1000);

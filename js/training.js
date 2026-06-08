@@ -1,6 +1,69 @@
 // ════════════════════════════════════════════
 // TRAINING MODE
 // ════════════════════════════════════════════
+let _openHistories=new Set();
+let _pendingDelete=null;
+
+function _sanitizeId(n){
+  return n.replace(/ä/g,'ae').replace(/ö/g,'oe').replace(/ü/g,'ue')
+           .replace(/Ä/g,'Ae').replace(/Ö/g,'Oe').replace(/Ü/g,'Ue')
+           .replace(/ß/g,'ss').replace(/[^a-zA-Z0-9]/g,'_');
+}
+function _toggleHistory(name){
+  if(_pendingDelete===name)return;
+  const sid=_sanitizeId(name);
+  const histEl=document.getElementById('hist-'+sid);
+  const chevEl=document.getElementById('chev-'+sid);
+  if(!histEl)return;
+  if(_openHistories.has(name)){
+    _openHistories.delete(name);histEl.style.maxHeight='0';histEl.style.opacity='0';
+    if(chevEl)chevEl.textContent='▼';
+  }else{
+    _openHistories.add(name);histEl.style.maxHeight='500px';histEl.style.opacity='1';
+    if(chevEl)chevEl.textContent='▲';
+  }
+}
+function getExerciseHistory(name,limit=10){
+  const results=[];
+  const keys=Object.keys(logData).sort().reverse();
+  for(const dk of keys){
+    const d=logData[dk];if(!d)continue;
+    const ex=d.exercises.find(e=>e.name===name);if(!ex)continue;
+    const valid=ex.sets.filter(s=>parseFloat(s.kg)>0&&parseInt(s.reps)>0);
+    if(!valid.length)continue;
+    const top=valid.reduce((b,s)=>parseFloat(s.kg)>=parseFloat(b.kg)?s:b,valid[0]);
+    const volume=Math.round(valid.reduce((sum,s)=>sum+(parseFloat(s.kg)||0)*(parseInt(s.reps)||0),0));
+    results.push({date:dk,maxKg:parseFloat(top.kg),bestReps:parseInt(top.reps)||0,setsCount:valid.length,volume});
+    if(results.length>=limit)break;
+  }
+  return results;
+}
+const MUSCLE_OPTIONS=['Brust','Rücken','Schulter','Bizeps','Trizeps',
+  'Core','Quadrizeps','Hamstrings','Gesäß','Waden','Kardio','Mobilität'];
+function getMuscleGroup(name){
+  if(!name)return'';
+  if(MUSCLE_MAP[name])return MUSCLE_MAP[name];
+  const base=name.split('·')[0].trim();
+  if(MUSCLE_MAP[base])return MUSCLE_MAP[base];
+  const key=Object.keys(MUSCLE_MAP).find(k=>name.toLowerCase().includes(k.toLowerCase()));
+  return key?MUSCLE_MAP[key]:'';
+}
+function pickMuscleGroup(dk,ei){
+  const sid=_sanitizeId((logData[dk]?.exercises[ei]?.name)||'');
+  const btn=document.getElementById('mg-btn-'+sid+'-'+ei);
+  if(!btn)return;
+  const sel=document.createElement('select');
+  sel.style.cssText='background:rgba(91,127,255,.12);color:var(--info);border:1px solid rgba(91,127,255,.2);font-size:9px;padding:2px 4px;border-radius:4px;font-family:inherit;cursor:pointer;';
+  sel.innerHTML='<option value="">Muskel wählen…</option>'+MUSCLE_OPTIONS.map(m=>`<option value="${m}">${m}</option>`).join('');
+  sel.onchange=e=>{
+    if(!e.target.value)return;
+    logData[dk].exercises[ei].muscleGroup=e.target.value;
+    saveLog();renderExercises(dk);bindSetInputs();
+  };
+  sel.onblur=()=>{setTimeout(()=>{if(!sel.value)renderExercises(dk);},150);};
+  btn.replaceWith(sel);
+  sel.focus();
+}
 
 // Reset any active edit-mode UI back to the neutral "tap a day" state.
 // Called before mode switches and when leaving the training tab.
@@ -145,17 +208,25 @@ function renderLog(){
   if(logPlanDay==='__free')sel.value='__free';
   if(logData[dk].exercises.length===0&&logPlanDay!=='__free'){
     const opt=opts.find(o=>o.key===logPlanDay);
-    if(opt)logData[dk].exercises=opt.exercises.map(e=>{const n=typeof e==='string'?e:e.name;const sc=typeof e==='object'?e.scheme||'':'';return{name:n,scheme:sc,sets:[{kg:'',reps:''}],fromPlan:true};});
+    if(opt)logData[dk].exercises=opt.exercises.map(e=>{const n=typeof e==='string'?e:e.name;const sc=typeof e==='object'?e.scheme||'':'';return{name:n,scheme:sc,sets:[{kg:'',reps:''}],fromPlan:true,muscleGroup:getMuscleGroup(n)||''};});
   }
   logData[dk].planDay=logPlanDay;saveLog();
   renderExercises(dk);bindSetInputs();
   renderWeekSummary();renderStrengthHistory();renderLogFeedback(dk);renderWeekFeedback();
 }
 function applyPlanDayToLog(dk,key){
-  const manual=(logData[dk].exercises||[]).filter(e=>!e.fromPlan);
+  const hasData=ex=>ex.sets?.some(s=>parseFloat(s.kg)>0||parseInt(s.reps)>0);
+  const toKeep=(logData[dk].exercises||[]).filter(hasData);
+  const keptNames=new Set(toKeep.map(e=>e.name));
   let planEx=[];
-  if(key!=='__free'){const opt=getPlanDayOptions().find(o=>o.key===key);if(opt)planEx=opt.exercises.map(e=>{const n=typeof e==='string'?e:e.name;const sc=typeof e==='object'?e.scheme||'':'';return{name:n,scheme:sc,sets:[{kg:'',reps:''}],fromPlan:true};});}
-  logData[dk].exercises=planEx.concat(manual);
+  if(key!=='__free'){
+    const opt=getPlanDayOptions().find(o=>o.key===key);
+    if(opt)planEx=opt.exercises
+      .filter(e=>!keptNames.has(typeof e==='string'?e:e.name))
+      .map(e=>{const n=typeof e==='string'?e:e.name;const sc=typeof e==='object'?e.scheme||'':'';
+               return{name:n,scheme:sc,sets:[{kg:'',reps:''}],fromPlan:true,muscleGroup:getMuscleGroup(n)||''};});
+  }
+  logData[dk].exercises=[...toKeep,...planEx];
   logData[dk].planDay=key;
   saveLog();
 }
@@ -169,24 +240,101 @@ function renderExercises(dk){
   const el=document.getElementById('exercise-log-list');if(!el)return;
   el.innerHTML='';
   (logData[dk]?.exercises||[]).forEach((ex,ei)=>{
-    const pr=prData[ex.name]||0;const maxKg=Math.max(0,...ex.sets.map(s=>parseFloat(s.kg)||0));
+    const pr=prData[ex.name]||0;
+    const maxKg=Math.max(0,...ex.sets.map(s=>parseFloat(s.kg)||0));
     const isNewPR=maxKg>0&&maxKg>=pr;
     const bestSet=ex.sets.reduce((best,s)=>{const kg=parseFloat(s.kg)||0,reps=parseInt(s.reps)||0;const orm=reps>1?kg*(1+reps/30):kg;return orm>best?orm:best;},0);
     const oneRM=bestSet>0?Math.round(bestSet):'—';
+    const sid=_sanitizeId(ex.name);
+    const eSafe=ex.name.replace(/'/g,"\\'");
     const div=document.createElement('div');div.className='log-exercise-card';
+
+    // ── DELETE CONFIRM STATE ──────────────────────────────
+    if(_pendingDelete===ex.name){
+      div.innerHTML=`
+        <div style="padding:2px 0;">
+          <div style="font-weight:600;font-size:14px;margin-bottom:10px;">🗑 ${ex.name} löschen?</div>
+          <p style="font-size:12px;color:var(--muted);line-height:1.5;margin:0 0 14px;">Übung wird aus dem heutigen Log gelöscht.<br>Gespeicherter Verlauf bleibt erhalten.</p>
+          <div style="display:flex;gap:10px;">
+            <button class="btn-primary" style="flex:1;background:var(--danger);border-color:var(--danger);" onclick="removeExercise('${dk}',${ei})">Ja, löschen</button>
+            <button class="btn-dashed" style="flex:1;" onclick="_pendingDelete=null;renderExercises('${dk}');bindSetInputs();">Abbrechen</button>
+          </div>
+        </div>`;
+      el.appendChild(div);
+      return;
+    }
+
+    // ── MUSCLE BADGE ─────────────────────────────────────
+    const mg=ex.muscleGroup||getMuscleGroup(ex.name);
+    const mgBadge=mg
+      ?`<span class="badge" style="background:rgba(91,127,255,.12);color:var(--info);border:1px solid rgba(91,127,255,.2);font-size:9px;padding:2px 6px;">${mg}</span>`
+      :(!ex.fromPlan
+        ?`<button id="mg-btn-${sid}-${ei}" onclick="event.stopPropagation();pickMuscleGroup('${dk}',${ei})" style="background:rgba(91,127,255,.12);color:var(--info);border:1px solid rgba(91,127,255,.2);font-size:9px;padding:2px 6px;border-radius:4px;cursor:pointer;font-family:inherit;">Muskel? ▾</button>`
+        :'');
+
+    // ── HISTORY + SPARKLINE ───────────────────────────────
+    const hist=getExerciseHistory(ex.name,10);
+    const histPoints=[...hist].reverse().map(h=>({x:h.date,y:h.maxKg}));
+    const sparkline=histPoints.length>=2
+      ?_svgLineChart(histPoints,{colorHex:'#5B7FFF',unit:'kg',h:52})
+      :histPoints.length===1
+        ?'<div style="font-size:11px;color:var(--muted);padding:4px 0;font-family:\'DM Mono\',monospace;">1 Session — weitere Daten für Sparkline</div>'
+        :'';
+
+    const histOpen=_openHistories.has(ex.name);
+    const prKg=prData[ex.name]||0;
+    let histRows='';
+    if(hist.length){
+      histRows=hist.map(h=>{
+        const isPR=prKg>0&&h.maxKg===prKg;
+        const dStr=h.date.slice(5).replace('-','/');
+        const bSet=h.maxKg+'kg'+(h.bestReps?' × '+h.bestReps:'');
+        const vol=h.volume>=1000?(h.volume/1000).toFixed(1)+'t':h.volume+'kg';
+        return '<tr style="border-top:1px solid var(--border);">'
+          +'<td style="padding:5px 6px;font-family:\'DM Mono\',monospace;font-size:11px;color:var(--muted);">'+dStr+'</td>'
+          +'<td style="padding:5px 6px;font-family:\'DM Mono\',monospace;font-size:11px;color:var(--text);">'+bSet+'</td>'
+          +'<td style="padding:5px 6px;font-family:\'DM Mono\',monospace;font-size:11px;color:var(--muted);text-align:center;">'+h.setsCount+'</td>'
+          +'<td style="padding:5px 6px;font-family:\'DM Mono\',monospace;font-size:11px;color:var(--muted);text-align:right;">'+vol+'</td>'
+          +'<td style="padding:4px 6px;">'+(isPR?'<span class="badge badge-yellow" style="font-size:8px;padding:1px 4px;">PR</span>':'')+'</td>'
+          +'</tr>';
+      }).join('');
+    }
+    const histTable=hist.length
+      ?'<div style="margin-top:10px;border-top:1px solid var(--border);padding-top:10px;">'
+        +'<div style="font-size:10px;color:var(--muted);font-family:\'DM Mono\',monospace;letter-spacing:.05em;margin-bottom:6px;">VERLAUF — LETZTE '+hist.length+' SESSIONS</div>'
+        +'<table style="width:100%;border-collapse:collapse;">'
+          +'<thead><tr>'
+            +'<th style="font-size:9px;color:var(--muted);font-family:\'DM Mono\',monospace;text-align:left;padding:0 6px 6px;font-weight:400;">DATUM</th>'
+            +'<th style="font-size:9px;color:var(--muted);font-family:\'DM Mono\',monospace;text-align:left;padding:0 6px 6px;font-weight:400;">BESTES SET</th>'
+            +'<th style="font-size:9px;color:var(--muted);font-family:\'DM Mono\',monospace;text-align:center;padding:0 6px 6px;font-weight:400;">SÄTZE</th>'
+            +'<th style="font-size:9px;color:var(--muted);font-family:\'DM Mono\',monospace;text-align:right;padding:0 6px 6px;font-weight:400;">VOL.</th>'
+            +'<th></th>'
+          +'</tr></thead>'
+          +'<tbody>'+histRows+'</tbody>'
+        +'</table></div>'
+      :'<p style="font-size:11px;color:var(--muted);padding:8px 0 2px;">Noch kein Verlauf.</p>';
+
     div.innerHTML=`
-      <div class="log-ex-header">
+      <div class="log-ex-header" style="cursor:pointer;" onclick="_toggleHistory('${eSafe}')">
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
           <span style="font-weight:600;font-size:14px;">${ex.name}</span>
+          ${mgBadge}
           ${ex.scheme?`<span style="font-size:10px;color:var(--muted);font-family:'DM Mono',monospace;">${ex.scheme}</span>`:''}
           ${isNewPR&&maxKg>0?'<span class="badge badge-yellow">🏆 PR!</span>':''}
         </div>
         <div style="display:flex;align-items:center;gap:10px;">
-          <span style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);">PR: ${pr>0?pr+'kg':'—'} · 1RM≈${oneRM}${oneRM!=='—'?'kg':''}</span>
-          <button class="del-btn" onclick="removeExercise('${dk}',${ei})">✕</button>
+          <span id="chev-${sid}" style="font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);user-select:none;">${histOpen?'▲':'▼'}</span>
+          <button class="del-btn" onclick="event.stopPropagation();_pendingDelete='${eSafe}';renderExercises('${dk}');bindSetInputs();">✕</button>
         </div>
       </div>
-      <div style="display:grid;grid-template-columns:26px 1fr 1fr 72px 24px;gap:6px;margin-bottom:6px;">
+      <div style="margin:6px 0 2px;">
+        <span style="font-size:11px;font-family:'DM Mono',monospace;color:var(--muted);">PR: <span style="color:var(--accent);">${pr>0?pr+'kg':'—'}</span> · 1RM≈<span style="color:var(--info);">${oneRM}${oneRM!=='—'?'kg':''}</span></span>
+      </div>
+      ${sparkline}
+      <div id="hist-${sid}" style="overflow:hidden;max-height:${histOpen?'500px':'0'};opacity:${histOpen?'1':'0'};transition:max-height .3s ease,opacity .2s ease;">
+        ${histTable}
+      </div>
+      <div style="display:grid;grid-template-columns:26px 1fr 1fr 72px 24px;gap:6px;margin:10px 0 6px;">
         <span class="log-col-label">#</span><span class="log-col-label">kg</span><span class="log-col-label">Reps</span><span class="log-col-label">Volumen</span><span></span>
       </div>
       <div>${ex.sets.map((set,si)=>renderSetRow(dk,ei,si,set)).join('')}</div>
@@ -219,11 +367,11 @@ function commitSet(dk,ei,si,field,v){
 }
 function addSet(dk,ei){logData[dk].exercises[ei].sets.push({kg:'',reps:''});saveLog();renderExercises(dk);bindSetInputs();}
 function removeSet(dk,ei,si){if(logData[dk].exercises[ei].sets.length>1){logData[dk].exercises[ei].sets.splice(si,1);saveLog();renderExercises(dk);bindSetInputs();}}
-function removeExercise(dk,ei){logData[dk].exercises.splice(ei,1);saveLog();renderExercises(dk);bindSetInputs();renderWeekSummary();}
+function removeExercise(dk,ei){_pendingDelete=null;logData[dk].exercises.splice(ei,1);saveLog();renderExercises(dk);bindSetInputs();renderWeekSummary();}
 function addExercise(){
   const dk=getDateKey(logDateOffset);if(!logData[dk])logData[dk]={exercises:[],planDay:logPlanDay};
   const name=prompt('Übungsname:','');
-  if(name&&name.trim()){logData[dk].exercises.push({name:name.trim(),sets:[{kg:'',reps:''}],fromPlan:false});saveLog();renderExercises(dk);bindSetInputs();}
+  if(name&&name.trim()){const n=name.trim();logData[dk].exercises.push({name:n,sets:[{kg:'',reps:''}],fromPlan:false,muscleGroup:getMuscleGroup(n)||''});saveLog();renderExercises(dk);bindSetInputs();}
 }
 
 // ════════════════════════════════════════════
