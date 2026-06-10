@@ -65,7 +65,7 @@ function _macroRowHtml(prot,carbs,fat){
   return`<div class="home-macro-row">
     <span><span class="macro-dot" style="background:var(--info);"></span><span style="color:var(--text2);">P</span> <span style="color:var(--text);font-weight:600;">${prot}g</span></span>
     <span><span class="macro-dot" style="background:var(--warn);"></span><span style="color:var(--text2);">K</span> <span style="color:var(--text);font-weight:600;">${carbs}g</span></span>
-    <span><span class="macro-dot" style="background:#9B7FFF;"></span><span style="color:var(--text2);">F</span> <span style="color:var(--text);font-weight:600;">${fat}g</span></span>
+    <span><span class="macro-dot" style="background:var(--purple);"></span><span style="color:var(--text2);">F</span> <span style="color:var(--text);font-weight:600;">${fat}g</span></span>
   </div>`;
 }
 function _kcalCardHtml(d,withMacros,withProteinRow){
@@ -114,8 +114,20 @@ function _waterCardHtml(){
   </div>`;
 }
 function _weeklySlot(){return`<div class="card" id="weekly-review-card"></div>`;}
-function _aiBox(msg){return`<div class="ai-box"><div class="ai-chip">⚡ KI ANALYSE</div><div id="ai-recommendation">${msg}</div></div>`;}
-function _logBtn(){return`<button class="hero-log-btn" onclick="document.querySelectorAll('.bottom-tab')[1]?.click()">Log →</button>`;}
+function _aiBox(msg){return`<div class="ai-box"><div class="ai-chip">${ICONS.zap} ANALYSE</div><div id="ai-recommendation">${msg}</div></div>`;}
+function heroLogAction(){
+  const btn=[...document.querySelectorAll('.bottom-tab')].find(b=>b.getAttribute('onclick')&&b.getAttribute('onclick').includes("'training'"));
+  if(btn)btn.click();
+  setTimeout(()=>{
+    const card=document.getElementById('exercise-log-card');
+    if(card)card.scrollIntoView({behavior:'smooth',block:'start'});
+    setTimeout(()=>{
+      const first=document.querySelector('#exercise-log-list input[type="number"]');
+      if(first)first.focus();
+    },400);
+  },150);
+}
+function _logBtn(){return`<button class="hero-log-btn" onclick="heroLogAction()">Log →</button>`;}
 function _streakBadgeHtml(streak){
   if(streak<2)return'';
   return`<span style="display:inline-flex;align-items:center;background:rgba(255,107,53,0.15);color:#FF6B35;border:1px solid rgba(255,107,53,0.3);border-radius:20px;padding:2px 8px;font-size:11px;font-weight:700;font-family:'DM Mono',monospace;vertical-align:middle;margin-left:6px;">🔥 ${streak}</span>`;
@@ -237,7 +249,7 @@ function renderBeginnerHome(d){
   const circ=226,off=Math.round(circ-circ*c.recovery/100);
   const tc=132;
   const slp=Math.round(c.s.sleep*10);
-  const sCol=slp>=70?'#9B7FFF':slp>=50?'var(--warn)':'var(--danger)';
+  const sCol=slp>=70?'var(--purple)':slp>=50?'var(--warn)':'var(--danger)';
   const netE=eaten-goalKcal,nCol=netE<=0?'var(--accent)':'var(--warn)';
   const recLbl=c.recovery>=75?'Optimal':c.recovery>=50?'Moderat':'Kritisch';
   const badgeCls=c.recovery>=75?'badge-green':c.recovery>=50?'badge-yellow':'badge-red';
@@ -328,7 +340,7 @@ function _sleepStagesHtml(sleepScore){
   const totalH=3.5+sleepScore*0.55;
   const stages=[
     {label:'Wach',pct:awakePct,time:_minsToHm(totalH*60*awakePct/100),color:'#FF7043'},
-    {label:'REM',pct:remPct,time:_minsToHm(totalH*60*remPct/100),color:'#9B7FFF'},
+    {label:'REM',pct:remPct,time:_minsToHm(totalH*60*remPct/100),color:'var(--purple)'},
     {label:'Core',pct:corePct,time:_minsToHm(totalH*60*corePct/100),color:'var(--info)'},
     {label:'Tief',pct:deepPct,time:_minsToHm(totalH*60*deepPct/100),color:'#2563EB'},
   ];
@@ -426,7 +438,7 @@ function _advKcalCardHtml(d){
     <div style="margin-top:14px;display:flex;flex-direction:column;gap:10px;">
       ${[{label:'Protein',g:prot,pct:protP,color:'var(--info)'},
          {label:'Kohlenhydrate',g:carbs,pct:carbP,color:'var(--warn)'},
-         {label:'Fett',g:fat,pct:fatP,color:'#9B7FFF'}].map(m=>`<div>
+         {label:'Fett',g:fat,pct:fatP,color:'var(--purple)'}].map(m=>`<div>
         <div style="display:flex;justify-content:space-between;margin-bottom:5px;">
           <span style="font-size:12px;color:var(--text2);">${m.label}</span>
           <span style="font-size:12px;font-family:'DM Mono',monospace;color:${m.color};font-weight:600;">${m.g}g <span style="color:var(--muted);font-weight:400;">${m.pct}%</span></span>
@@ -451,7 +463,7 @@ function _advSleepStagesHtml(sleepScore){
     const grandTotal=sleepHMins||measuredMins||1;
     stages=[
       {label:'Wach', mins:awakeMins,      color:'#FF7043'},
-      {label:'REM',  mins:s.rem||0,       color:'#9B7FFF'},
+      {label:'REM',  mins:s.rem||0,       color:'var(--purple)'},
       {label:'Core', mins:s.light||0,     color:'var(--info)'},
       {label:'Tief', mins:s.deep||0,      color:'#2563EB'},
     ].map(st=>({...st,pct:Math.round(st.mins/grandTotal*100)}));
@@ -464,7 +476,7 @@ function _advSleepStagesHtml(sleepScore){
     const totalH=3.5+sleepScore*0.55;
     stages=[
       {label:'Wach',pct:awakePct,mins:totalH*60*awakePct/100,color:'#FF7043'},
-      {label:'REM', pct:remPct,  mins:totalH*60*remPct/100,  color:'#9B7FFF'},
+      {label:'REM', pct:remPct,  mins:totalH*60*remPct/100,  color:'var(--purple)'},
       {label:'Core',pct:corePct, mins:totalH*60*corePct/100, color:'var(--info)'},
       {label:'Tief',pct:deepPct, mins:totalH*60*deepPct/100, color:'#2563EB'},
     ];
@@ -494,7 +506,7 @@ function renderAdvancedHome(d){
   const liftToday=getBestLiftToday();
   const circ=226,off=Math.round(circ-circ*c.recovery/100);
   const slp=Math.round(c.s.sleep*10);
-  const sCol=slp>=70?'#9B7FFF':slp>=50?'#FFAD33':'#FF5757';
+  const sCol=slp>=70?'var(--purple)':slp>=50?'#FFAD33':'#FF5757';
   const netE=eaten-goalKcal,nCol=netE<=0?'var(--accent)':'var(--warn)';
   const recLbl=c.recovery>=75?'Optimal':c.recovery>=50?'Moderat':'Kritisch';
   const badgeCls=c.recovery>=75?'badge-green':c.recovery>=50?'badge-yellow':'badge-red';

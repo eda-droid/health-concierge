@@ -1,3 +1,23 @@
+const BODY_METRICS=[
+  {key:'hip',   label:'Hüfte',       unit:'cm', negGood:false},
+  {key:'waist', label:'Taille',       unit:'cm', negGood:true},
+  {key:'thigh', label:'Oberschenkel', unit:'cm', negGood:false},
+  {key:'weight',label:'Gewicht',      unit:'kg', negGood:false},
+  {key:'bf',    label:'Körperfett',   unit:'%',  negGood:true},
+  {key:'arm',   label:'Oberarm',      unit:'cm', negGood:false},
+  {key:'chest', label:'Brust',        unit:'cm', negGood:false},
+];
+
+let goalsEditMode=false;
+
+function getGoals(){
+  try{return JSON.parse(lsGet('vitale_goals'))||{};}
+  catch{return{};}
+}
+function saveGoals(obj){
+  lsSet('vitale_goals',JSON.stringify(obj));
+}
+
 // ════════════════════════════════════════════
 // INJURY / BODY MAP
 // ════════════════════════════════════════════
@@ -30,7 +50,7 @@ function renderInjury(){
   const allAlts=[...new Set(active.map(p=>injuryMap[p]?.alt).filter(Boolean))];
   const blocked=getBlockedExercises();
   document.getElementById('injury-adjust-content').innerHTML=`
-    <div class="ai-box" style="margin-bottom:12px;"><div class="ai-chip">🤖 KI ANPASSUNG</div><strong>${blocked.length} Übung(en) gesperrt:</strong> ${blocked.join(', ')}.</div>
+    <div class="ai-box" style="margin-bottom:12px;"><div class="ai-chip">ANPASSUNG</div><strong>${blocked.length} Übung(en) gesperrt:</strong> ${blocked.join(', ')}.</div>
     <div class="card-label" style="margin-bottom:8px;">Empfohlene Alternativen</div>
     ${allAlts.map(a=>`<div class="stat-row"><span class="sr-label" style="color:var(--accent);">→</span><span style="color:var(--text);font-weight:400;">${a}</span></div>`).join('')}`;
 }
@@ -118,7 +138,7 @@ function saveMeasurement(){
   const wasEditing=!!editingMeasureDate;
   editingMeasureDate=null;
   _updateEditBanner();
-  saveMeasureData();renderMeasureHistory();renderDashboard();updateAll();
+  saveMeasureData();renderMeasureHistory();populateCompareDates();renderBodyHero();renderDashboard();updateAll();
   const st=document.getElementById('measure-save-status');
   st.innerHTML=`<span style="color:var(--accent);">✓ ${wasEditing?'Aktualisiert':'Gespeichert'} (${entry.date})</span>`;
   setTimeout(()=>{st.innerHTML='';},4000);
@@ -211,6 +231,7 @@ function renderMeasureHistory(){
   }
 
   const metrics=[
+    {key:'hip',label:'Hüfte',unit:'cm',color:'var(--purple)'},
     {key:'weight',label:'Gewicht',unit:'kg',color:'var(--accent)'},
     {key:'bf',label:'Körperfett',unit:'%',color:'var(--warn)'},
     {key:'waist',label:'Taille',unit:'cm',color:'var(--info)'},
@@ -222,6 +243,7 @@ function renderMeasureHistory(){
     'var(--accent)':'#00E5A0',
     'var(--warn)':'#FFAD33',
     'var(--info)':'#5B7FFF',
+    'var(--purple)':'#9B7FFF',
     '#EC4899':'#EC4899',
   };
   metrics.forEach(m=>{
@@ -299,6 +321,247 @@ function renderMeasureHistory(){
 
   html+='</div>';
   el.innerHTML=html;
+  populateCompareDates();
+  renderBodyHero();
+}
+
+// ════════════════════════════════════════════
+// SCHMERZEN COLLAPSE
+// ════════════════════════════════════════════
+function toggleSchmerzenBlock(){
+  const block=document.getElementById('schmerzen-block');
+  const arrow=document.getElementById('schmerzen-arrow');
+  if(!block)return;
+  const open=block.style.display!=='none';
+  block.style.display=open?'none':'block';
+  if(arrow)arrow.style.transform=open?'':'rotate(90deg)';
+  lsSet('vitale_schmerzen_open',open?'0':'1');
+}
+
+// ════════════════════════════════════════════
+// MASS COMPARE
+// ════════════════════════════════════════════
+function populateCompareDates(){
+  const a=document.getElementById('compare-date-a');
+  const b=document.getElementById('compare-date-b');
+  if(!a||!b)return;
+  if(!measureData.length){
+    a.innerHTML='<option>—</option>';
+    b.innerHTML='<option>—</option>';
+    const res=document.getElementById('mass-compare-result');
+    if(res)res.innerHTML='<p style="font-size:13px;color:var(--muted);">Noch keine Messungen vorhanden.</p>';
+    return;
+  }
+  const prevA=a.value,prevB=b.value;
+  const opts=measureData.map(m=>`<option value="${m.date}">${m.date}</option>`).join('');
+  a.innerHTML=opts;b.innerHTML=opts;
+  const oldest=measureData[0].date;
+  const newest=measureData[measureData.length-1].date;
+  a.value=prevA&&measureData.find(m=>m.date===prevA)?prevA:oldest;
+  b.value=prevB&&measureData.find(m=>m.date===prevB)?prevB:newest;
+  renderMassCompare();
+}
+
+function renderMassCompare(){
+  const el=document.getElementById('mass-compare-result');
+  if(!el)return;
+  const dateA=document.getElementById('compare-date-a')?.value;
+  const dateB=document.getElementById('compare-date-b')?.value;
+  if(!dateA||!dateB||dateA===dateB){
+    el.innerHTML='<p style="font-size:13px;color:var(--muted);">Zwei verschiedene Daten wählen.</p>';
+    return;
+  }
+  const mA=measureData.find(m=>m.date===dateA);
+  const mB=measureData.find(m=>m.date===dateB);
+  if(!mA||!mB){el.innerHTML='';return;}
+  const rows=[
+    {key:'weight',label:'Gewicht',unit:'kg',lowerIsBetter:false},
+    {key:'bf',label:'Körperfett',unit:'%',lowerIsBetter:true},
+    {key:'waist',label:'Taille',unit:'cm',lowerIsBetter:true},
+    {key:'chest',label:'Brust',unit:'cm',lowerIsBetter:false},
+    {key:'arm',label:'Oberarm',unit:'cm',lowerIsBetter:false},
+    {key:'thigh',label:'Oberschenkel',unit:'cm',lowerIsBetter:false},
+  ];
+  let html='';
+  rows.forEach(r=>{
+    const vA=mA[r.key],vB=mB[r.key];
+    if(!vA&&!vB)return;
+    const diff=Math.round((vB-vA)*10)/10;
+    const diffSign=diff>0?'+':'';
+    const improved=(r.lowerIsBetter&&diff<0)||(!r.lowerIsBetter&&diff>0);
+    const neutral=diff===0;
+    const deltaColor=neutral?'var(--muted)':improved?'var(--accent)':'var(--danger)';
+    const star=improved&&Math.abs(diff)>=0.5;
+    html+=`<div class="compare-row${star?' compare-row-star':''}">
+      <span class="compare-label">${r.label}</span>
+      <span class="compare-vals"><span class="compare-val-a">${vA||'—'}${r.unit}</span><span class="compare-arrow"> → </span><span class="compare-val-b">${vB||'—'}${r.unit}</span></span>
+      <span class="compare-delta" style="color:${deltaColor};">${star?'★ ':''}${diffSign}${diff}${r.unit}</span>
+    </div>`;
+  });
+  if(!html)html='<p style="font-size:13px;color:var(--muted);">Keine gemeinsamen Messwerte.</p>';
+  el.innerHTML=html;
+}
+
+// ════════════════════════════════════════════
+// BODY HERO CARD
+// ════════════════════════════════════════════
+function renderBodyHero(){
+  const el=document.getElementById('body-hero-content');
+  if(!el)return;
+  if(!measureData.length){
+    el.innerHTML='<p style="font-size:12px;color:var(--muted);">Erste Messung speichern um den Fortschritt zu sehen.</p>';
+    renderGoalsSection();
+    return;
+  }
+  const sorted=[...measureData].sort((a,b)=>a.date.localeCompare(b.date));
+  const latest=sorted[sorted.length-1];
+  const first=sorted[0];
+
+  const hipNow=latest.hip||0;
+  const hipFirst=first.hip||0;
+  const hipDiff=hipNow&&hipFirst?Math.round((hipNow-hipFirst)*10)/10:null;
+
+  const whr=(latest.waist&&latest.hip)?Math.round(latest.waist/latest.hip*100)/100:null;
+
+  const wNow=latest.weight||0;
+  const wFirst=first.weight||0;
+  const wDiff=wNow&&wFirst?Math.round((wNow-wFirst)*10)/10:null;
+
+  const diffStr=hipDiff!==null?(hipDiff>0?`+${hipDiff}`:`${hipDiff}`)+' cm seit Start':'';
+  const diffColor=hipDiff!==null?(hipDiff>0?'var(--accent)':hipDiff<0?'var(--danger)':'var(--muted)'):'var(--muted)';
+
+  let whrHtml='';
+  if(whr){
+    const whrColor=whr<0.80?'var(--accent)':whr<0.85?'var(--warn)':'var(--danger)';
+    const whrLabel=whr<0.80?'Ideal':whr<0.85?'Gut':'Erhöht';
+    whrHtml=`
+      <div style="display:flex;align-items:center;gap:8px;margin-top:10px;padding-top:10px;border-top:1px solid var(--border);">
+        <span style="font-size:11px;color:var(--muted);flex:1;">Taille-Hüft-Ratio (WHR)</span>
+        <span style="font-family:'DM Mono',monospace;font-size:13px;font-weight:700;color:${whrColor};">${whr}</span>
+        <span class="badge" style="background:${whrColor}22;color:${whrColor};">${whrLabel}</span>
+      </div>`;
+  }
+
+  el.innerHTML=`
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;">
+      <div style="flex:1;">
+        <div style="font-size:11px;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px;">Hüfte — Hauptmetrik</div>
+        <div style="font-size:42px;font-weight:700;font-family:'DM Mono',monospace;letter-spacing:-0.03em;line-height:1;color:var(--text);">
+          ${hipNow||'—'}<span style="font-size:18px;font-weight:400;color:var(--muted);margin-left:4px;">cm</span>
+        </div>
+        ${hipDiff!==null?`<div style="font-size:13px;color:${diffColor};margin-top:6px;font-family:'DM Mono',monospace;">${diffStr}</div>`:''}
+      </div>
+      <div style="text-align:right;">
+        <div style="font-size:11px;color:var(--muted);margin-bottom:4px;">Gewicht</div>
+        <div style="font-size:20px;font-weight:700;font-family:'DM Mono',monospace;">
+          ${wNow||'—'}<span style="font-size:12px;font-weight:400;color:var(--muted);">kg</span>
+        </div>
+        ${wDiff!==null?`<div style="font-size:11px;color:${wDiff<0?'var(--accent)':'var(--muted)'};font-family:'DM Mono',monospace;">${wDiff>0?'+':''}${wDiff} kg</div>`:''}
+      </div>
+    </div>
+    ${whrHtml}`;
+  renderGoalsSection();
+}
+
+// ════════════════════════════════════════════
+// GOALS SECTION
+// ════════════════════════════════════════════
+function renderGoalsSection(){
+  const el=document.getElementById('body-goals-section');
+  if(!el)return;
+  const goals=getGoals();
+  const sorted=[...measureData].sort((a,b)=>a.date.localeCompare(b.date));
+  const latest=sorted[sorted.length-1]||{};
+  const hasAnyGoal=BODY_METRICS.some(m=>goals[m.key]);
+
+  if(goalsEditMode){
+    let html=`<div style="font-size:11px;font-weight:600;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;margin-bottom:12px;">Ziele setzen</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;">`;
+    BODY_METRICS.forEach(m=>{
+      const current=goals[m.key]||'';
+      html+=`<div class="form-group">
+        <label>${m.label.toUpperCase()} (${m.unit})</label>
+        <input type="number" id="goal-input-${m.key}" placeholder="Ziel..." value="${current}" min="0" step="0.1"
+               style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:8px;color:var(--text);font-size:14px;font-family:'DM Mono',monospace;text-align:center;width:100%;box-sizing:border-box;outline:none;transition:border-color .18s;"
+               onfocus="this.style.borderColor='var(--accent)'"
+               onblur="this.style.borderColor='var(--border)'">
+      </div>`;
+    });
+    html+=`</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+        <button class="btn-primary" onclick="saveGoalsFromInputs()">Ziele speichern</button>
+        <button class="btn-ghost" onclick="goalsEditMode=false;renderGoalsSection()">Abbrechen</button>
+      </div>`;
+    el.innerHTML=html;
+    return;
+  }
+
+  if(!hasAnyGoal){
+    el.innerHTML=`<button class="btn-ghost" style="width:100%;font-size:12px;" onclick="goalsEditMode=true;renderGoalsSection()">+ Ziel setzen</button>`;
+    return;
+  }
+
+  let html='';
+  BODY_METRICS.forEach(m=>{
+    const goal=goals[m.key];
+    if(!goal)return;
+    const current=latest[m.key]||0;
+    const diff=current&&goal?Math.round((goal-current)*10)/10:null;
+    const firstVal=(sorted[0]||{})[m.key]||current;
+    const wantLower=goal<firstVal;
+
+    const atGoal=wantLower
+      ?(current<=goal&&current>=goal-1)
+      :(current>=goal&&current<=goal+1);
+    const overshot=wantLower
+      ?(current>0&&current<goal-1)
+      :(current>0&&current>goal+1);
+
+    const distToGoal=Math.abs(current-goal);
+    const scale=Math.max(1,goal*0.15);
+    const displayPct=(overshot||atGoal)
+      ?100
+      :Math.min(99,Math.max(5,Math.round((1-distToGoal/scale)*100)));
+
+    const barColor=overshot?'var(--muted)'
+      :atGoal?'var(--accent)'
+      :'var(--warn)';
+
+    const statusText=overshot
+      ?`<span style="color:var(--muted);">✓ Übertroffen</span>`
+      :atGoal
+      ?`<span style="color:var(--accent);">Ziel erreicht 🎯</span>`
+      :diff!==null
+      ?`<span style="color:${barColor};">noch ${wantLower?`−${Math.abs(diff)}`:`+${diff}`}${m.unit}</span>`
+      :'';
+
+    html+=`<div style="margin-bottom:10px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+        <span style="font-size:12px;font-weight:500;">${m.label}</span>
+        <span style="font-size:11px;font-family:'DM Mono',monospace;color:var(--muted);">
+          ${current||'—'}${m.unit} / ${goal}${m.unit}
+          ${statusText?`<span style="margin-left:6px;">${statusText}</span>`:''}
+        </span>
+      </div>
+      <div style="height:5px;background:var(--border);border-radius:3px;overflow:hidden;">
+        <div style="width:${displayPct}%;height:100%;background:${barColor};border-radius:3px;transition:width .6s;"></div>
+      </div>
+    </div>`;
+  });
+  html+=`<button class="btn-ghost" style="width:100%;font-size:11px;margin-top:4px;" onclick="goalsEditMode=true;renderGoalsSection()">Ziele bearbeiten</button>`;
+  el.innerHTML=html;
+}
+
+function saveGoalsFromInputs(){
+  const obj={};
+  BODY_METRICS.forEach(m=>{
+    const v=document.getElementById('goal-input-'+m.key)?.value;
+    obj[m.key]=v?parseFloat(v):null;
+  });
+  saveGoals(obj);
+  goalsEditMode=false;
+  renderGoalsSection();
+  renderBodyHero();
 }
 
 // ════════════════════════════════════════════

@@ -95,7 +95,7 @@ function applyTrainingModeUI(){
     mb.classList.toggle('active',trainingMode==='beginner');
     ma.classList.toggle('active',trainingMode==='advanced');
     document.getElementById('mode-desc').innerHTML=trainingMode==='beginner'
-      ?'Im Einsteiger-Modus erstellt die KI automatisch einen Push/Pull/Legs-Plan basierend auf deiner Recovery.'
+      ?'Im Einsteiger-Modus erstellt Vitale automatisch einen Push/Pull/Legs-Plan basierend auf deiner Recovery.'
       :'Im Fortgeschritten-Modus kannst du jeden Tag individuell anpassen — Übungen, Sätze, Reps.';
   }
 }
@@ -201,6 +201,16 @@ function getPlanDayOptions(){
   plan.forEach((wt,i)=>{if(wt==='rest')return;const wp=workoutPlans[wt];if(seen[wt])return;seen[wt]=1;opts.push({key:wt,label:wp.label,exercises:wp.ex.map(e=>e[0])});});
   return opts;
 }
+function toggleAnalyseBlock(){
+  const block=document.getElementById('analyse-block');
+  const arrow=document.getElementById('analyse-arrow');
+  if(!block)return;
+  const open=block.style.display!=='none';
+  block.style.display=open?'none':'block';
+  if(arrow)arrow.style.transform=open?'':'rotate(180deg)';
+  lsSet('vitale_analyse_open',open?'0':'1');
+}
+
 function renderLog(){
   const dk=getDateKey(logDateOffset);
   document.getElementById('log-date-label').textContent=formatDateLabel(logDateOffset);
@@ -221,8 +231,14 @@ function renderLog(){
   logData[dk].planDay=logPlanDay;saveLog();
   renderExercises(dk);bindSetInputs();
   renderWeekSummary();renderStrengthHistory();renderLogFeedback(dk);renderWeekFeedback();renderVolumeTracker();
+  const saved=lsGet('vitale_analyse_open');
+  const b=document.getElementById('analyse-block');
+  const a=document.getElementById('analyse-arrow');
+  if(b){b.style.display=saved==='1'?'block':'none';}
+  if(a){a.style.transform=saved==='1'?'rotate(180deg)':'';}
 }
 function applyPlanDayToLog(dk,key){
+  flushInputs(dk);
   const hasData=ex=>ex.sets?.some(s=>parseFloat(s.kg)>0||parseInt(s.reps)>0);
   const toKeep=(logData[dk].exercises||[]).filter(hasData);
   const keptNames=new Set(toKeep.map(e=>e.name));
@@ -244,6 +260,19 @@ function changeLogPlanDay(){
   applyPlanDayToLog(dk,newKey);
   renderExercises(dk);bindSetInputs();
 }
+function getLastLoggedValue(name){
+  for(let i=1;i<=30;i++){
+    const dk=getDateKey(-i);
+    const d=logData[dk];if(!d)continue;
+    const ex=(d.exercises||[]).find(e=>e.name===name);if(!ex)continue;
+    const valid=ex.sets.filter(s=>parseFloat(s.kg)>0||parseInt(s.reps)>0);
+    if(!valid.length)continue;
+    const last=valid[valid.length-1];
+    return{kg:last.kg||'',reps:last.reps||''};
+  }
+  return null;
+}
+
 function renderExercises(dk){
   const el=document.getElementById('exercise-log-list');if(!el)return;
   el.innerHTML='';
@@ -327,6 +356,11 @@ function renderExercises(dk){
         +'</table></div>'
       :'<p style="font-size:11px;color:var(--muted);padding:8px 0 2px;">Noch kein Verlauf.</p>';
 
+    const _last=getLastLoggedValue(ex.name);
+    const ghostHtml=_last
+      ?`<div class="ghost-hint">Zuletzt: <span>${_last.kg?_last.kg+'kg':''}${_last.kg&&_last.reps?' × ':''}${_last.reps?_last.reps+' Wdh.':''}</span></div>`
+      :'';
+
     div.innerHTML=`
       <div class="log-ex-header" style="cursor:pointer;" onclick="_toggleHistory('${eSafe}')">
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
@@ -352,6 +386,7 @@ function renderExercises(dk){
       <div style="display:grid;grid-template-columns:26px 1fr 1fr 72px 24px;gap:6px;margin:10px 0 6px;">
         <span class="log-col-label">#</span><span class="log-col-label">kg</span><span class="log-col-label">Reps</span><span class="log-col-label">Volumen</span><span></span>
       </div>
+      ${ghostHtml}
       <div>${ex.sets.map((set,si)=>renderSetRow(dk,ei,si,set)).join('')}</div>
       <button class="btn-dashed" onclick="addSet('${dk}',${ei})" style="margin-top:6px;padding:7px;">+ Satz</button>`;
     el.appendChild(div);
@@ -381,9 +416,16 @@ function commitSet(dk,ei,si,field,v){
   if(maxKg>0&&maxKg>(prData[vKey]||0))prData[vKey]=maxKg;
   saveLog();renderExercises(dk);bindSetInputs();renderWeekSummary();renderLogFeedback(dk);renderStrengthHistory();renderWeekFeedback();renderVolumeTracker();
 }
-function addSet(dk,ei){logData[dk].exercises[ei].sets.push({kg:'',reps:''});saveLog();renderExercises(dk);bindSetInputs();}
-function removeSet(dk,ei,si){if(logData[dk].exercises[ei].sets.length>1){logData[dk].exercises[ei].sets.splice(si,1);saveLog();renderExercises(dk);bindSetInputs();}}
-function removeExercise(dk,ei){_pendingDelete=null;logData[dk].exercises.splice(ei,1);saveLog();renderExercises(dk);bindSetInputs();renderWeekSummary();}
+function flushInputs(dk){
+  document.querySelectorAll(`.set-input[data-dk="${dk}"]`).forEach(inp=>{
+    const ei=+inp.dataset.ei,si=+inp.dataset.si,f=inp.dataset.field;
+    if(logData[dk]?.exercises[ei]?.sets[si]!==undefined)
+      logData[dk].exercises[ei].sets[si][f]=inp.value;
+  });
+}
+function addSet(dk,ei){flushInputs(dk);logData[dk].exercises[ei].sets.push({kg:'',reps:''});saveLog();renderExercises(dk);bindSetInputs();}
+function removeSet(dk,ei,si){flushInputs(dk);if(logData[dk].exercises[ei].sets.length>1){logData[dk].exercises[ei].sets.splice(si,1);saveLog();renderExercises(dk);bindSetInputs();}}
+function removeExercise(dk,ei){flushInputs(dk);_pendingDelete=null;logData[dk].exercises.splice(ei,1);saveLog();renderExercises(dk);bindSetInputs();renderWeekSummary();}
 function addExercise(){
   const dk=getDateKey(logDateOffset);if(!logData[dk])logData[dk]={exercises:[],planDay:logPlanDay};
   const name=prompt('Übungsname:','');
@@ -640,7 +682,7 @@ function renderStrengthHistory(){
 function renderLogFeedback(dk){
   const el=document.getElementById('log-ai-feedback');if(!el)return;
   const d=logData[dk];
-  if(!d||!d.exercises.some(ex=>ex.sets.some(s=>s.kg&&s.reps))){el.textContent='Trage Werte ein für KI-Analyse...';return;}
+  if(!d||!d.exercises.some(ex=>ex.sets.some(s=>s.kg&&s.reps))){el.textContent='Trage Werte ein für Analyse...';return;}
   const totalVol=d.exercises.reduce((sum,ex)=>sum+ex.sets.reduce((s2,set)=>s2+(parseFloat(set.kg)||0)*(parseInt(set.reps)||0),0),0);
   const msgs=[];
   const newPRexes=d.exercises.filter(ex=>{const maxKg=Math.max(0,...ex.sets.map(s=>parseFloat(s.kg)||0));return maxKg>0&&maxKg===(prData[ex.name]||0);});
@@ -654,7 +696,7 @@ function renderLogFeedback(dk){
     if(maxReps<=5)return`<strong>${ex.name}:</strong> Schwere Intensität → nächste Woche +1 Satz.`;
     return null;
   }).filter(Boolean);
-  if(sugg.length)msgs.push('<br><strong>KI Progression:</strong><br>'+sugg.join('<br>'));
+  if(sugg.length)msgs.push('<br><strong>Coach-Progression:</strong><br>'+sugg.join('<br>'));
   el.innerHTML=msgs.join(' ')||'Session gespeichert.';
 }
 

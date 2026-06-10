@@ -48,7 +48,7 @@ function renderNutrition(){
   const showTracked=eatenP>0||eatenC>0||eatenF>0;
   const fatKcalPct=eatenF>0&&eaten>0?Math.round(eatenF*9/eaten*100):0;
   const fatWarning=currentGoal==='bulk'&&fatKcalPct>35&&eatenF>0
-    ?`<div style="background:rgba(255,173,51,0.1);border:1px solid rgba(255,173,51,0.25);border-radius:8px;padding:10px 12px;margin-top:10px;font-size:12px;line-height:1.6;color:var(--warn);">⚠ <strong>KI-Tipp Bulk:</strong> Fett macht ${fatKcalPct}% deiner Kalorien aus. Über 35% im Bulk sind ineffizient — Kohlenhydrate liefern Trainingsenergie und schonen Muskelprotein. Mehr Carbs, weniger Fett anstreben.</div>`
+    ?`<div style="background:rgba(255,173,51,0.1);border:1px solid rgba(255,173,51,0.25);border-radius:8px;padding:10px 12px;margin-top:10px;font-size:12px;line-height:1.6;color:var(--warn);">⚠ <strong>Tipp Bulk:</strong> Fett macht ${fatKcalPct}% deiner Kalorien aus. Über 35% im Bulk sind ineffizient — Kohlenhydrate liefern Trainingsenergie und schonen Muskelprotein. Mehr Carbs, weniger Fett anstreben.</div>`
     :'';
 
   let macroTableHtml='';

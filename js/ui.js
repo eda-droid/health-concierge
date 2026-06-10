@@ -9,7 +9,14 @@ function switchTab(id,el){
   document.getElementById(id).classList.add('active');
   el.classList.add('active');
   if(id==='training'){renderLog();renderWeekTab();}
-  if(id==='profile'){renderInjury();calcNavy();renderMeasureHistory();_initSubTabs('profile','profil');}
+  if(id==='body'){
+    renderInjury();calcNavy();renderMeasureHistory();populateCompareDates();renderBodyHero();renderGoalsSection();
+    const _sb=lsGet('vitale_schmerzen_open');
+    const _sblock=document.getElementById('schmerzen-block');
+    const _sarrow=document.getElementById('schmerzen-arrow');
+    if(_sblock){_sblock.style.display=_sb==='1'?'block':'none';}
+    if(_sarrow){_sarrow.style.transform=_sb==='1'?'rotate(90deg)':'';}
+  }
   if(id==='home')renderDashboard();
   if(id==='nutrition')renderNutrition();
   if(id==='settings'){renderDeloadStatus();_applyThemeUI();}
@@ -51,6 +58,14 @@ function applyLockState(){
   if(ub)ub.style.display=slidersLocked?'block':'none';
 }
 function lockSliders(){slidersLocked=true;applyLockState();saveAll();}
+function updateWatchPill(){
+  const txt=document.getElementById('watch-pill-text'),pulse=document.getElementById('watch-pill-pulse');
+  if(!txt)return;
+  const hasImport=lastHealthImportDate===getTodayKey();
+  txt.textContent=hasImport?'⌚ Watch ✓':'⌚ Kein Import';
+  txt.style.color=hasImport?'var(--accent)':'var(--muted)';
+  if(pulse)pulse.style.display=hasImport?'block':'none';
+}
 function setHealthEnergyUnit(unit){
   healthEnergyUnit=unit;
   const bKcal=document.getElementById('unit-kcal'),bKj=document.getElementById('unit-kj');

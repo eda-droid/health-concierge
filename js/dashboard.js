@@ -97,6 +97,7 @@ function renderDeloadBanner(){
 // ════════════════════════════════════════════
 function updateAll(){
   const c=computeAll();
+  if(typeof updateWatchPill==='function')updateWatchPill();
   if(document.getElementById('sleep-val')){
     document.getElementById('sleep-val').textContent=c.s.sleep+'/10';
     document.getElementById('hrv-val').textContent=c.s.hrv+' ms';
