@@ -599,3 +599,8 @@ function renderAdvancedHome(d){
   renderWater();
   if(typeof renderWeeklyReview==='function')renderWeeklyReview();
 }
+
+window.setUIMode        =setUIMode;
+window.heroLogAction    =heroLogAction;
+window.saveBasicSleep   =saveBasicSleep;
+window.saveBasicActivity=saveBasicActivity;

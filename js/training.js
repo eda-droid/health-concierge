@@ -720,3 +720,5 @@ function renderWeekFeedback(){
   if(getDeloadWeeks()>=6)msgs.push('<span style="color:var(--warn);">⏰ Deload-Woche einplanen.</span>');
   el.innerHTML=msgs.join(' ');
 }
+
+window.toggleAnalyseBlock=toggleAnalyseBlock;

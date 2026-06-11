@@ -8,7 +8,7 @@ const BODY_METRICS=[
   {key:'chest', label:'Brust',        unit:'cm', negGood:false},
 ];
 
-let goalsEditMode=false;
+var goalsEditMode=false;
 
 function getGoals(){
   try{return JSON.parse(lsGet('vitale_goals'))||{};}
@@ -583,3 +583,8 @@ function _onGenderChange(){
   saveAll();
   calcNavy();
 }
+
+window.toggleSchmerzenBlock=toggleSchmerzenBlock;
+window.renderMassCompare   =renderMassCompare;
+window.saveGoalsFromInputs =saveGoalsFromInputs;
+window.renderGoalsSection  =renderGoalsSection;
