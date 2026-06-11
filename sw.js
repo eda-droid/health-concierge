@@ -1,4 +1,4 @@
-const CACHE = 'vitale-v2';
+const CACHE = 'vitale-v3';
 const ASSETS = [
   './index.html',
   './css/style.css',
@@ -23,7 +23,15 @@ self.addEventListener('activate', e => {
 });
 
 self.addEventListener('fetch', e => {
+  // Network-first: immer frischen Code laden, Cache nur als Offline-Fallback.
+  // Verhindert, dass iOS dauerhaft alte gecachte JS-Dateien ausliefert.
   e.respondWith(
-    caches.match(e.request).then(r => r || fetch(e.request))
+    fetch(e.request)
+      .then(r => {
+        const copy = r.clone();
+        caches.open(CACHE).then(c => c.put(e.request, copy)).catch(() => {});
+        return r;
+      })
+      .catch(() => caches.match(e.request))
   );
 });
