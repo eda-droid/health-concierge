@@ -1,11 +1,15 @@
 // ════════════════════════════════════════════
-// UTILS — DOM + Datum + Mahlzeit-Helfer
+// UTILS — DOM-Helfer, Datums-Keys, Mahlzeit-Normalisierung, Streaks & Stats
+// Öffentlich (onclick): saveMood
 // ════════════════════════════════════════════
 function val(id){const e=document.getElementById(id);return e?e.value:'';}
 function setVal(id,v){const e=document.getElementById(id);if(e&&v!==undefined&&v!=='')e.value=v;}
 
-function getTodayKey(){return new Date().toISOString().slice(0,10);}
-function getDateKey(offset){const d=new Date();d.setDate(d.getDate()+(offset||0));return d.toISOString().slice(0,10);}
+// Lokale Datums-Keys (YYYY-MM-DD). toISOString wäre UTC und würde nach
+// Mitternacht (00:00–01:59 MEZ/MESZ) Einträge auf den Vortag schreiben.
+function _localDateKey(d){const p=n=>String(n).padStart(2,'0');return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate());}
+function getTodayKey(){return _localDateKey(new Date());}
+function getDateKey(offset){const d=new Date();d.setDate(d.getDate()+(offset||0));return _localDateKey(d);}
 function formatDateLabel(offset){if(offset===0)return'Heute';if(offset===-1)return'Gestern';const d=new Date();d.setDate(d.getDate()+offset);return d.toLocaleDateString('de-DE',{weekday:'short',day:'numeric',month:'short'});}
 
 function getDay(dk){if(!dailyData[dk])dailyData[dk]={water:0,meals:[],burned:0,mood:null,sleepHours:null};return dailyData[dk];}
@@ -65,8 +69,9 @@ function getBestLiftToday(){
   for(let i=-6;i<=0;i++){
     const d=logData[getDateKey(i)];
     if(!d)continue;
-    d.exercises.forEach(ex=>{
-      const maxKg=ex.sets.length?Math.max(...ex.sets.map(s=>parseFloat(s.kg)||0)):0;
+    (d.exercises||[]).forEach(ex=>{
+      const sets=ex.sets||[];
+      const maxKg=sets.length?Math.max(...sets.map(s=>parseFloat(s.kg)||0)):0;
       if(maxKg>best.kg)best={name:ex.name,kg:maxKg};
     });
   }
@@ -77,8 +82,9 @@ function getBestLiftThisWeek(){
   for(let i=-6;i<=0;i++){
     const d=logData[getDateKey(i)];
     if(!d)continue;
-    d.exercises.forEach(ex=>{
-      const maxKg=ex.sets.length?Math.max(...ex.sets.map(s=>parseFloat(s.kg)||0)):0;
+    (d.exercises||[]).forEach(ex=>{
+      const sets=ex.sets||[];
+      const maxKg=sets.length?Math.max(...sets.map(s=>parseFloat(s.kg)||0)):0;
       if(maxKg>best.kg)best={name:ex.name,kg:maxKg};
     });
   }
@@ -119,3 +125,9 @@ function getWaterGoal(){
   const base=Math.round((parseFloat(val('p-weight'))||80)*35);
   return Math.max(2000,Math.min(4000,base));
 }
+
+// ════════════════════════════════════════════
+// PUBLIC API (von onclick=/onchange= benötigt)
+// ════════════════════════════════════════════
+window.saveMood      =saveMood;
+window.saveSleepHours=saveSleepHours;

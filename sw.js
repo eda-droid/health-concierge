@@ -1,4 +1,4 @@
-const CACHE = 'vitale-v3';
+const CACHE = 'vitale-v4';
 const ASSETS = [
   './index.html',
   './css/style.css',

@@ -1,8 +1,10 @@
 // ════════════════════════════════════════════
-// TRAINING MODE
+// TRAINING — Wochenplan, Trainings-Log, Verlauf, Volumen & Feedback
+// Öffentlich (onclick): siehe PUBLIC-API-Block am Dateiende
 // ════════════════════════════════════════════
 let _openHistories=new Set();
-let _pendingDelete=null;
+// var statt let: onclick-Strings schreiben _pendingDelete direkt (window-Scope)
+var _pendingDelete=null;
 
 function _sanitizeId(n){
   return n.replace(/ä/g,'ae').replace(/ö/g,'oe').replace(/ü/g,'ue')
@@ -76,7 +78,7 @@ function cycleVariant(dk,ei){
 // Called before mode switches and when leaving the training tab.
 function _resetTrainingEdit(){
   const sw=document.getElementById('selected-workout');
-  if(sw)sw.innerHTML='<div class="card-label">Wochenplan</div><p style="font-size:13px;color:var(--muted);">Tippe auf einen Tag für Details.</p>';
+  if(sw)sw.innerHTML='<div class="card-label">Wochenplan</div><p class="hint-text">Tippe auf einen Tag für Details.</p>';
   // Clear the day-card highlight so nothing looks selected after the reset
   document.querySelectorAll('#week-grid .day-card').forEach(c=>c.classList.remove('today-card'));
 }
@@ -110,14 +112,17 @@ function renderWeekTab(recoveryOverride){
   if(trainingMode==='advanced'&&customPlan){renderCustomWeekGrid();renderVolumeTracker();return;}
   const plan=getWeekPlan(recovery);
   const todayIdx=(new Date().getDay()+6)%7;
+  const today=getTodayKey();
   el.innerHTML=plan.map((wt,i)=>{
     const wp=workoutPlans[wt]||workoutPlans.rest;
     const isT=i===todayIdx;
+    const dk=getDateKey(i-todayIdx);
+    const autoRest=dk<today&&wt!=='rest'&&wt!=='recovery'&&!hasLogEntry(dk);
     const blocked=getBlockedExercises();
-    const hasBlock=wp.ex.some(e=>blocked.includes(e[0]));
+    const hasBlock=!autoRest&&wp.ex.some(e=>blocked.includes(e[0]));
     return`<div class="day-card${isT?' today-card':''}" onclick="showDayDetail(${i},'${wt}')">
       <div class="day-name">${daysShort[i]}</div>
-      <div class="day-type" style="color:${wt==='rest'?'var(--muted)':wt==='recovery'?'var(--warn)':'var(--accent)'}">${wp.short}</div>
+      <div class="day-type" style="color:${autoRest?'var(--muted)':wt==='rest'?'var(--muted)':wt==='recovery'?'var(--warn)':'var(--accent)'}">${autoRest?'Ruhetag':wp.short}</div>
       ${hasBlock?'<div style="font-size:9px;color:var(--danger);">⚠</div>':''}
     </div>`;
   }).join('');
@@ -133,7 +138,7 @@ function showDayDetail(i,wt){
   let rows='';
   if(wp.ex.length){
     rows=`<table class="workout-table">${wp.ex.map(e=>{const isBlocked=blocked.includes(e[0]);return`<tr style="${isBlocked?'opacity:.4;text-decoration:line-through;':''}">`+`<td>${e[0]}${isBlocked?' ⚠':''}</td><td>${e[1]}</td><td>${e[2]}</td></tr>`;}).join('')}</table>`;
-  } else{rows='<p style="font-size:13px;color:var(--muted);">Heute: Aktive Regeneration oder Ruhetag.</p>';}
+  } else{rows='<p class="hint-text">Heute: Aktive Regeneration oder Ruhetag.</p>';}
   document.getElementById('selected-workout').innerHTML=`<div class="card-label" style="margin-bottom:12px;">${daysFull[i]} — ${wp.label}</div>${rows}${blocked.length?`<p style="font-size:11px;color:var(--danger);margin-top:10px;">⚠ Gesperrt wegen Schmerzen: ${blocked.join(', ')}</p>`:''}`;
   if(wt!=='rest'&&wt!=='recovery'){
     logPlanDay=wt;
@@ -145,9 +150,12 @@ function showDayDetail(i,wt){
 }
 function renderCustomWeekGrid(){
   const todayIdx=(new Date().getDay()+6)%7;
+  const today=getTodayKey();
   document.getElementById('week-grid').innerHTML=customPlan.map((day,i)=>{
     const isT=i===todayIdx;
-    return`<div class="day-card${isT?' today-card':''}" onclick="showCustomDayDetail(${i})"><div class="day-name">${daysShort[i]}</div><div class="day-type">${day.title.split(' ').slice(0,2).join(' ')}</div><span class="badge badge-blue" style="font-size:8px;padding:2px 4px;">Eigen</span></div>`;
+    const dk=getDateKey(i-todayIdx);
+    const autoRest=dk<today&&!hasLogEntry(dk);
+    return`<div class="day-card${isT?' today-card':''}" onclick="showCustomDayDetail(${i})"><div class="day-name">${daysShort[i]}</div><div class="day-type" style="color:${autoRest?'var(--muted)':'inherit'}">${autoRest?'Ruhetag':day.title.split(' ').slice(0,2).join(' ')}</div>${autoRest?'<span style="font-size:8px;color:var(--muted);padding:2px 4px;">—</span>':'<span class="badge badge-blue" style="font-size:8px;padding:2px 4px;">Eigen</span>'}</div>`;
   }).join('');
 }
 function showCustomDayDetail(dayIdx){
@@ -156,7 +164,7 @@ function showCustomDayDetail(dayIdx){
   let rows='';
   if(day.ex.length){
     rows=`<table class="workout-table">${day.ex.map(e=>{const isBlocked=blocked.includes(e.name);return`<tr style="${isBlocked?'opacity:.4;text-decoration:line-through;':''}">`+`<td>${e.name||'—'}${isBlocked?' ⚠':''}</td><td>${e.scheme||''}</td></tr>`;}).join('')}</table>`;
-  }else{rows='<p style="font-size:13px;color:var(--muted);">Keine Übungen eingetragen.</p>';}
+  }else{rows='<p class="hint-text">Keine Übungen eingetragen.</p>';}
   document.getElementById('selected-workout').innerHTML=`
     <div class="card-label" style="margin-bottom:12px;">${daysFull[dayIdx]} — ${day.title}</div>
     ${rows}
@@ -195,6 +203,11 @@ function removeCustomEx(d,e){customPlan[d].ex.splice(e,1);saveCustomPlan();editC
 // TRAININGS-LOG
 // ════════════════════════════════════════════
 function changeLogDate(dir){logDateOffset+=dir;if(logDateOffset>0)logDateOffset=0;logPlanDay=null;renderLog();}
+function hasLogEntry(dk){
+  const d=logData[dk];
+  if(!d||!d.exercises||!d.exercises.length)return false;
+  return d.exercises.some(ex=>ex.sets&&ex.sets.some(s=>s.kg||s.reps));
+}
 function getPlanDayOptions(){
   if(trainingMode==='advanced'&&customPlan)return customPlan.map((d,i)=>({key:'c'+i,label:d.title,exercises:d.ex.filter(e=>e.name).map(e=>({name:e.name,scheme:e.scheme||''}))}));
   const plan=weekPlanState||getWeekPlan(75);const seen={};const opts=[];
@@ -472,15 +485,15 @@ function renderMuscleGroupStats(){
     });
   }
   const entries=Object.entries(groups).filter(([,g])=>g.sets>0).sort((a,b)=>b[1].volume-a[1].volume);
-  if(!entries.length){el.innerHTML='<p style="font-size:12px;color:var(--muted);">Noch keine Daten. Kraftwerte im Log eintragen.</p>';return;}
+  if(!entries.length){el.innerHTML='<p class="hint-text-sm">Noch keine Daten. Kraftwerte im Log eintragen.</p>';return;}
   const maxVol=Math.max(...entries.map(([,g])=>g.volume));
   el.innerHTML=`
     <table style="width:100%;border-collapse:collapse;font-size:12px;">
       <thead><tr>
-        <td style="color:var(--muted);font-size:10px;font-family:'DM Mono',monospace;padding:0 0 10px;width:35%;">MUSKELGRUPPE</td>
-        <td style="color:var(--muted);font-size:10px;font-family:'DM Mono',monospace;padding:0 0 10px;text-align:center;width:15%;">SÄTZE</td>
-        <td style="color:var(--muted);font-size:10px;font-family:'DM Mono',monospace;padding:0 0 10px;text-align:right;width:20%;">VOLUMEN</td>
-        <td style="color:var(--muted);font-size:10px;font-family:'DM Mono',monospace;padding:0 0 10px;padding-left:10px;width:30%;">AUSLASTUNG</td>
+        <td class="th-mono" style="padding:0 0 10px;width:35%;">MUSKELGRUPPE</td>
+        <td class="th-mono" style="padding:0 0 10px;text-align:center;width:15%;">SÄTZE</td>
+        <td class="th-mono" style="padding:0 0 10px;text-align:right;width:20%;">VOLUMEN</td>
+        <td class="th-mono" style="padding:0 0 10px;padding-left:10px;width:30%;">AUSLASTUNG</td>
       </tr></thead>
       <tbody>${entries.map(([name,g])=>{
         const volTons=(g.volume/1000).toFixed(2)+'t';
@@ -500,38 +513,6 @@ function renderMuscleGroupStats(){
       }).join('')}</tbody>
     </table>
     <p style="font-size:10px;color:var(--muted);margin-top:8px;font-family:'DM Mono',monospace;">Hypertrophie-Ziel: 10–20 Sätze/Woche pro Gruppe</p>`;
-}
-
-function renderSleepAnalysis(sleepData){
-  const card=document.getElementById('sleep-quality-bar');
-  const metrics=document.getElementById('sleep-phase-metrics');
-  if(!sleepData||!card||!metrics)return;
-  const {deep=0,rem=0,light=0,total=0}=sleepData;
-  if(total<60)return;
-  const deepPct=total>0?Math.round(deep/total*100):0;
-  const remPct=total>0?Math.round(rem/total*100):0;
-  const hours=(total/60).toFixed(1);
-  const durationScore=total>=420&&total<=540?30:total>=360?20:10;
-  const deepScore=deepPct>=15&&deepPct<=25?35:deepPct>=10?20:5;
-  const remScore=remPct>=20&&remPct<=30?35:remPct>=15?20:5;
-  const qualityScore=Math.min(100,durationScore+deepScore+remScore);
-  const qualColor=qualityScore>=75?'var(--accent)':qualityScore>=50?'var(--warn)':'var(--danger)';
-  const qualText=qualityScore>=75?'Sehr gut':qualityScore>=50?'Ausreichend':'Schlecht';
-  metrics.style.display='grid';
-  metrics.innerHTML=`
-    <div class="summary-card"><div class="summary-val" style="font-size:18px;color:var(--info);">${hours}h</div><div class="summary-label">Schlafdauer</div></div>
-    <div class="summary-card"><div class="summary-val" style="font-size:18px;color:var(--accent);">${deepPct}%</div><div class="summary-label">Tiefschlaf</div></div>
-    <div class="summary-card"><div class="summary-val" style="font-size:18px;color:var(--warn);">${remPct}%</div><div class="summary-label">REM-Schlaf</div></div>`;
-  card.style.display='block';
-  document.getElementById('sleep-quality-pct').textContent=qualityScore+'/100 — '+qualText;
-  document.getElementById('sleep-quality-fill').style.cssText=`height:100%;border-radius:4px;width:${qualityScore}%;background:${qualColor};`;
-  let advice='';
-  if(deepPct<15)advice+='🔵 Tiefschlaf zu gering (Ziel 15–25%). Kein Alkohol, kühle Raumtemperatur, konstante Schlafzeiten. ';
-  if(remPct<20)advice+='🟡 REM zu gering (Ziel 20–30%). Stress reduzieren, kein Training zu spät. ';
-  if(total<420)advice+='⏰ Unter 7 Stunden — Recovery leidet stark. ';
-  if(total>540)advice+='😴 Über 9 Stunden kann auf Schlafprobleme hinweisen. ';
-  if(!advice)advice='✓ Schlafprofil optimal. Recovery maximiert.';
-  document.getElementById('sleep-advice').innerHTML=advice;
 }
 
 // ════════════════════════════════════════════
@@ -676,7 +657,7 @@ function renderStrengthHistory(){
       </div>`;
   });
   const sh=document.getElementById('strength-history');
-  if(sh)sh.innerHTML=html||'<p style="font-size:13px;color:var(--muted);">Noch keine Daten. Kraftwerte eintragen.</p>';
+  if(sh)sh.innerHTML=html||'<p class="hint-text">Noch keine Daten. Kraftwerte eintragen.</p>';
 }
 
 function renderLogFeedback(dk){
@@ -721,6 +702,9 @@ function renderWeekFeedback(){
   el.innerHTML=msgs.join(' ');
 }
 
+// ════════════════════════════════════════════
+// PUBLIC API (von onclick=/onblur= benötigt)
+// ════════════════════════════════════════════
 window.toggleAnalyseBlock  =toggleAnalyseBlock;
 window.setTrainingMode     =setTrainingMode;
 window.changeLogDate       =changeLogDate;
@@ -734,6 +718,10 @@ window.showCustomDayDetail =showCustomDayDetail;
 window.editCustomDay       =editCustomDay;
 window.addCustomEx         =addCustomEx;
 window.removeCustomEx      =removeCustomEx;
+window.updateCustomEx      =updateCustomEx;
+window.updateCustomDayTitle=updateCustomDayTitle;
 window.cycleVariant        =cycleVariant;
 window.pickMuscleGroup     =pickMuscleGroup;
 window._toggleHistory      =_toggleHistory;
+window.renderExercises     =renderExercises;
+window.bindSetInputs       =bindSetInputs;

@@ -1,5 +1,6 @@
 // ════════════════════════════════════════════
-// WORKOUT DATA
+// DATA — statische Stammdaten: Workout-Pläne, Muskel-Mapping, Wochentage,
+// Verletzungs-Map. Keine Logik, keine onclick-Funktionen
 // ════════════════════════════════════════════
 const workoutPlans={
   heavy_push:{label:'Brust + Trizeps',short:'Push',ex:[['Bankdrücken','Brust','4×6–8'],['Schrägbank KH','Brust','3×8–10'],['Dips (Gewichtet)','Trizeps','3×8'],['Cable Flyes','Brust','3×12'],['Trizeps PD','Trizeps','3×12']]},

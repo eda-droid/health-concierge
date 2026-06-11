@@ -1,5 +1,6 @@
 // ════════════════════════════════════════════
-// DASHBOARD
+// DASHBOARD — Heute-Ansicht, Wasser-Tracking, Deload-Banner, updateAll-Orchestrierung
+// Öffentlich (onclick): siehe PUBLIC-API-Block am Dateiende
 // ════════════════════════════════════════════
 function renderDashboard(){
   const c=computeAll();
@@ -142,3 +143,9 @@ function updateAll(){
   renderDeloadBanner();
   saveAll();
 }
+
+// ════════════════════════════════════════════
+// PUBLIC API (von onclick=/oninput= benötigt)
+// ════════════════════════════════════════════
+window.addWater =addWater;
+window.updateAll=updateAll;

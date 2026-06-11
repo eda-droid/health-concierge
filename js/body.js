@@ -1,3 +1,7 @@
+// ════════════════════════════════════════════
+// BODY — Körpermaße, Navy-KFA, Ziele, Verlauf, Vergleich, Schmerzen & Deload
+// Öffentlich (onclick): siehe PUBLIC-API-Block am Dateiende
+// ════════════════════════════════════════════
 const BODY_METRICS=[
   {key:'hip',   label:'Hüfte',       unit:'cm', negGood:false},
   {key:'waist', label:'Taille',       unit:'cm', negGood:true},
@@ -10,12 +14,16 @@ const BODY_METRICS=[
 
 var goalsEditMode=false;
 
+// lsGet/lsSet JSON-codieren bereits — Altbestand ist doppelt codiert (String),
+// daher beide Formen lesen können. Neu wird nur noch einfach codiert gespeichert.
 function getGoals(){
-  try{return JSON.parse(lsGet('vitale_goals'))||{};}
-  catch{return{};}
+  const v=lsGet('vitale_goals',null);
+  if(!v)return{};
+  if(typeof v==='string'){try{return JSON.parse(v)||{};}catch(e){return{};}}
+  return v;
 }
 function saveGoals(obj){
-  lsSet('vitale_goals',JSON.stringify(obj));
+  lsSet('vitale_goals',obj);
 }
 
 // ════════════════════════════════════════════
@@ -40,7 +48,8 @@ function renderInjury(){
   });
   const active=Object.keys(painMap).filter(p=>painMap[p]>0);
   const info=document.getElementById('injury-info');const adjCard=document.getElementById('injury-adjustment');
-  if(active.length===0){info.innerHTML='<p style="font-size:13px;color:var(--muted);">Keine Beschwerden. Training läuft wie geplant. 💪</p>';adjCard.style.display='none';return;}
+  if(!info||!adjCard)return;
+  if(active.length===0){info.innerHTML='<p class="hint-text">Keine Beschwerden. Training läuft wie geplant. 💪</p>';adjCard.style.display='none';return;}
   info.innerHTML=active.map(p=>{
     const inj=injuryMap[p];if(!inj)return'';
     const sev=painMap[p]===2?'<span class="badge badge-red">Starker Schmerz</span>':'<span class="badge badge-yellow">Leichter Schmerz</span>';
@@ -129,7 +138,7 @@ function calcNavy(){
 // ════════════════════════════════════════════
 function saveMeasurement(){
   const bf=calcNavy();
-  const targetDate=editingMeasureDate||new Date().toISOString().slice(0,10);
+  const targetDate=editingMeasureDate||getTodayKey();
   const entry={date:targetDate,weight:parseFloat(val('p-weight'))||80,bf,
     neck:parseFloat(val('m-neck'))||0,waist:parseFloat(val('m-waist'))||0,hip:parseFloat(val('m-hip'))||0,
     chest:parseFloat(val('m-chest'))||0,arm:parseFloat(val('m-arm'))||0,thigh:parseFloat(val('m-thigh'))||0};
@@ -140,8 +149,10 @@ function saveMeasurement(){
   _updateEditBanner();
   saveMeasureData();renderMeasureHistory();populateCompareDates();renderBodyHero();renderDashboard();updateAll();
   const st=document.getElementById('measure-save-status');
-  st.innerHTML=`<span style="color:var(--accent);">✓ ${wasEditing?'Aktualisiert':'Gespeichert'} (${entry.date})</span>`;
-  setTimeout(()=>{st.innerHTML='';},4000);
+  if(st){
+    st.innerHTML=`<span style="color:var(--accent);">✓ ${wasEditing?'Aktualisiert':'Gespeichert'} (${entry.date})</span>`;
+    setTimeout(()=>{st.innerHTML='';},4000);
+  }
 }
 
 function editMeasurement(date){
@@ -204,7 +215,7 @@ function _getMeasureFiltered(){
   if(measureHistoryFilter==='all')return measureData;
   const days={30:30,'30d':30,'90d':90,'1y':365}[measureHistoryFilter]||30;
   const cutoff=new Date();cutoff.setDate(cutoff.getDate()-days);
-  const cutStr=cutoff.toISOString().slice(0,10);
+  const cutStr=_localDateKey(cutoff);
   return measureData.filter(m=>m.date>=cutStr);
 }
 function _setMeasureFilter(f){measureHistoryFilter=f;measureHistoryShown=5;renderMeasureHistory();}
@@ -212,7 +223,7 @@ function _loadMoreMeasurements(){measureHistoryShown+=5;renderMeasureHistory();}
 
 function renderMeasureHistory(){
   const el=document.getElementById('measure-history');if(!el)return;
-  if(!measureData.length){el.innerHTML='<p style="font-size:13px;color:var(--muted);">Noch keine Messungen. Oben eintragen und speichern.</p>';return;}
+  if(!measureData.length){el.innerHTML='<p class="hint-text">Noch keine Messungen. Oben eintragen und speichern.</p>';return;}
 
   const filtered=_getMeasureFiltered();
 
@@ -226,7 +237,7 @@ function renderMeasureHistory(){
   </div>`;
 
   if(!filtered.length){
-    html+='<p style="font-size:13px;color:var(--muted);">Keine Messungen im gewählten Zeitraum.</p>';
+    html+='<p class="hint-text">Keine Messungen im gewählten Zeitraum.</p>';
     el.innerHTML=html;return;
   }
 
@@ -349,7 +360,7 @@ function populateCompareDates(){
     a.innerHTML='<option>—</option>';
     b.innerHTML='<option>—</option>';
     const res=document.getElementById('mass-compare-result');
-    if(res)res.innerHTML='<p style="font-size:13px;color:var(--muted);">Noch keine Messungen vorhanden.</p>';
+    if(res)res.innerHTML='<p class="hint-text">Noch keine Messungen vorhanden.</p>';
     return;
   }
   const prevA=a.value,prevB=b.value;
@@ -368,7 +379,7 @@ function renderMassCompare(){
   const dateA=document.getElementById('compare-date-a')?.value;
   const dateB=document.getElementById('compare-date-b')?.value;
   if(!dateA||!dateB||dateA===dateB){
-    el.innerHTML='<p style="font-size:13px;color:var(--muted);">Zwei verschiedene Daten wählen.</p>';
+    el.innerHTML='<p class="hint-text">Zwei verschiedene Daten wählen.</p>';
     return;
   }
   const mA=measureData.find(m=>m.date===dateA);
@@ -398,7 +409,7 @@ function renderMassCompare(){
       <span class="compare-delta" style="color:${deltaColor};">${star?'★ ':''}${diffSign}${diff}${r.unit}</span>
     </div>`;
   });
-  if(!html)html='<p style="font-size:13px;color:var(--muted);">Keine gemeinsamen Messwerte.</p>';
+  if(!html)html='<p class="hint-text">Keine gemeinsamen Messwerte.</p>';
   el.innerHTML=html;
 }
 
@@ -409,7 +420,7 @@ function renderBodyHero(){
   const el=document.getElementById('body-hero-content');
   if(!el)return;
   if(!measureData.length){
-    el.innerHTML='<p style="font-size:12px;color:var(--muted);">Erste Messung speichern um den Fortschritt zu sehen.</p>';
+    el.innerHTML='<p class="hint-text-sm">Erste Messung speichern um den Fortschritt zu sehen.</p>';
     renderGoalsSection();
     return;
   }
@@ -584,6 +595,9 @@ function _onGenderChange(){
   calcNavy();
 }
 
+// ════════════════════════════════════════════
+// PUBLIC API (von onclick=/onchange= benötigt)
+// ════════════════════════════════════════════
 window.toggleSchmerzenBlock  =toggleSchmerzenBlock;
 window.renderMassCompare     =renderMassCompare;
 window.saveGoalsFromInputs   =saveGoalsFromInputs;
@@ -597,3 +611,4 @@ window.deleteMeasurement     =deleteMeasurement;
 window.cancelEditMeasurement =cancelEditMeasurement;
 window._setMeasureFilter     =_setMeasureFilter;
 window._loadMoreMeasurements =_loadMoreMeasurements;
+window._onGenderChange       =_onGenderChange;

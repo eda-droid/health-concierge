@@ -1,5 +1,6 @@
 // ════════════════════════════════════════════
-// EVENT-BINDINGS
+// INIT — Bootstrap: Event-Bindings, State laden, Erst-Render, Auto-Watch-Fetch
+// Muss als letztes Modul geladen werden; keine onclick-Funktionen
 // ════════════════════════════════════════════
 ['vd-skin','vd-sun','vd-season','vd-level'].forEach(id=>{const e=document.getElementById(id);if(e)e.addEventListener('change',saveAll);});
 

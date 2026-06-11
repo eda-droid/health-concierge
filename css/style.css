@@ -615,3 +615,8 @@ input[type=range]:disabled::-webkit-slider-thumb{background:var(--muted);box-sha
 .compare-arrow{color:var(--muted);}
 .compare-val-b{color:var(--text);font-weight:600;}
 .compare-delta{flex:0 0 72px;text-align:right;font-family:'DM Mono',monospace;font-weight:600;font-size:11px;}
+
+/* ════ UTILITY (aus wiederholten Inline-Styles extrahiert) ════ */
+.hint-text{font-size:13px;color:var(--muted);}
+.hint-text-sm{font-size:12px;color:var(--muted);}
+.th-mono{color:var(--muted);font-size:10px;font-family:'DM Mono',monospace;}

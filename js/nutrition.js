@@ -1,5 +1,7 @@
 // ════════════════════════════════════════════
-// NUTRITION
+// NUTRITION — Mahlzeiten-Tracking, Makros, Wochenbilanz, Vitamin-D-Rechner,
+// Meal-Templates, Wochen-Review, Supplements
+// Öffentlich (onclick): siehe PUBLIC-API-Block am Dateiende
 // ════════════════════════════════════════════
 function renderNutrition(){
   const c=computeAll();const dk=getTodayKey();const day=getDay(dk);
@@ -29,7 +31,7 @@ function renderNutrition(){
         <button class="del-btn" onclick="removeMeal(${i})">✕</button>
       </div>`;
     }).join('')
-    :'<p style="font-size:12px;color:var(--muted);">Noch keine Mahlzeit eingetragen.</p>';
+    :'<p class="hint-text-sm">Noch keine Mahlzeit eingetragen.</p>';
 
   const hasTrackedMacros=eatenP>0||eatenC>0||eatenF>0;
   let protPct,carbPct,fatPct;
@@ -61,10 +63,10 @@ function renderNutrition(){
     macroTableHtml=`
       <table style="width:100%;border-collapse:collapse;font-size:12px;">
         <thead><tr>
-          <td style="color:var(--muted);font-size:10px;font-family:'DM Mono',monospace;padding:0 0 8px;width:40%;">MAKRO</td>
-          <td style="color:var(--muted);font-size:10px;font-family:'DM Mono',monospace;padding:0 0 8px;text-align:right;width:20%;">ZIEL</td>
-          <td style="color:var(--muted);font-size:10px;font-family:'DM Mono',monospace;padding:0 0 8px;text-align:right;width:20%;">HEUTE</td>
-          <td style="color:var(--muted);font-size:10px;font-family:'DM Mono',monospace;padding:0 0 8px;text-align:right;width:20%;">REST</td>
+          <td class="th-mono" style="padding:0 0 8px;width:40%;">MAKRO</td>
+          <td class="th-mono" style="padding:0 0 8px;text-align:right;width:20%;">ZIEL</td>
+          <td class="th-mono" style="padding:0 0 8px;text-align:right;width:20%;">HEUTE</td>
+          <td class="th-mono" style="padding:0 0 8px;text-align:right;width:20%;">REST</td>
         </tr></thead>
         <tbody>
           ${rows.map(r=>{
@@ -90,8 +92,8 @@ function renderNutrition(){
     macroTableHtml=`
       <table style="width:100%;border-collapse:collapse;font-size:12px;">
         <thead><tr>
-          <td style="color:var(--muted);font-size:10px;font-family:'DM Mono',monospace;padding:0 0 8px;">MAKRO</td>
-          <td style="color:var(--muted);font-size:10px;font-family:'DM Mono',monospace;padding:0 0 8px;text-align:right;">ZIEL</td>
+          <td class="th-mono" style="padding:0 0 8px;">MAKRO</td>
+          <td class="th-mono" style="padding:0 0 8px;text-align:right;">ZIEL</td>
         </tr></thead>
         <tbody>
           <tr style="border-top:1px solid var(--border);"><td style="padding:9px 0;color:var(--info);">■ Protein</td><td style="padding:9px 0;text-align:right;font-family:'DM Mono',monospace;">${c.protein}g</td></tr>
@@ -147,7 +149,7 @@ function renderWeeklyNutrition(){
     if(kcal>0){totalKcal+=kcal;totalP+=p;totalC+=c2;totalF+=f;days++;}
     dayRows.push({dk,kcal,p,c:c2,f,label:i===0?'Heute':i===-1?'Gestern':new Date(dk+'T12:00:00').toLocaleDateString('de-DE',{weekday:'short'})});
   }
-  if(days===0){el.innerHTML='<p style="font-size:12px;color:var(--muted);">Trage täglich Mahlzeiten ein für die Wochenbilanz.</p>';return;}
+  if(days===0){el.innerHTML='<p class="hint-text-sm">Trage täglich Mahlzeiten ein für die Wochenbilanz.</p>';return;}
 
   const avgKcal=Math.round(totalKcal/days);
   const c=computeAll();
@@ -180,10 +182,10 @@ function renderWeeklyNutrition(){
     ${totalP>0?`
     <table style="width:100%;border-collapse:collapse;font-size:12px;">
       <thead><tr>
-        <td style="color:var(--muted);font-size:10px;font-family:'DM Mono',monospace;padding:0 0 8px;">WOCHE GESAMT</td>
-        <td style="color:var(--muted);font-size:10px;font-family:'DM Mono',monospace;padding:0 0 8px;text-align:right;">GESAMT</td>
-        <td style="color:var(--muted);font-size:10px;font-family:'DM Mono',monospace;padding:0 0 8px;text-align:right;">Ø / TAG</td>
-        <td style="color:var(--muted);font-size:10px;font-family:'DM Mono',monospace;padding:0 0 8px;text-align:right;">ZIEL/TAG</td>
+        <td class="th-mono" style="padding:0 0 8px;">WOCHE GESAMT</td>
+        <td class="th-mono" style="padding:0 0 8px;text-align:right;">GESAMT</td>
+        <td class="th-mono" style="padding:0 0 8px;text-align:right;">Ø / TAG</td>
+        <td class="th-mono" style="padding:0 0 8px;text-align:right;">ZIEL/TAG</td>
       </tr></thead>
       <tbody>
         <tr style="border-top:1px solid var(--border);"><td style="padding:8px 0;color:var(--info);">■ Protein</td><td style="padding:8px 0;text-align:right;font-family:'DM Mono',monospace;">${totalP}g</td><td style="padding:8px 0;text-align:right;font-family:'DM Mono',monospace;color:var(--info);">${Math.round(totalP/days)}g</td><td style="padding:8px 0;text-align:right;font-family:'DM Mono',monospace;color:var(--muted);">${c.protein}g</td></tr>
@@ -357,9 +359,12 @@ function calcVitDAndCollapse(){
 }
 function toggleVitD(){vitdOpen=!vitdOpen;applyVitDCollapse();saveAll();}
 function applyVitDCollapse(){
-  document.getElementById('vitd-body').style.display=vitdOpen?'block':'none';
-  document.getElementById('vitd-arrow').classList.toggle('open',vitdOpen);
+  const body=document.getElementById('vitd-body');
+  const arrow=document.getElementById('vitd-arrow');
   const inline=document.getElementById('vitd-summary-inline');
+  if(!body||!arrow||!inline)return;
+  body.style.display=vitdOpen?'block':'none';
+  arrow.classList.toggle('open',vitdOpen);
   if(!vitdOpen&&vitdComputed)inline.textContent=` — ${vitdComputed.suppDose>0?vitdComputed.suppDose.toLocaleString('de-DE')+' IE/Tag':'kein Supplement nötig'}`;
   else inline.textContent='';
 }
@@ -486,7 +491,7 @@ function renderMealTemplates(){
   const el=document.getElementById('meal-templates-list');if(!el)return;
   _updateTemplateBanner();
   if(!mealTemplates.length){
-    el.innerHTML='<p style="font-size:12px;color:var(--muted);">Noch keine Templates gespeichert.</p>';
+    el.innerHTML='<p class="hint-text-sm">Noch keine Templates gespeichert.</p>';
     return;
   }
   el.innerHTML=mealTemplates.map((t,i)=>{
@@ -739,6 +744,9 @@ function renderSupps(protein){
     <div class="stat-row"><span class="sr-label">Protein Shake</span><span class="sr-val">${Math.round(protein*.25)}g Post-Workout</span></div>`;
 }
 
+// ════════════════════════════════════════════
+// PUBLIC API (von onclick=/oninput= benötigt)
+// ════════════════════════════════════════════
 window.addMeal             =addMeal;
 window.removeMeal          =removeMeal;
 window.adjustKcal          =adjustKcal;

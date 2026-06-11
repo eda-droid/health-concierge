@@ -1,5 +1,6 @@
 // ════════════════════════════════════════════
-// UI MODE TOGGLE
+// HOME-MODES — Dashboard-Varianten (Basic/Einsteiger/Advanced) + UI-Mode-Toggle
+// Öffentlich (onclick): siehe PUBLIC-API-Block am Dateiende
 // ════════════════════════════════════════════
 function setUIMode(mode){
   globalUIMode=mode;
@@ -138,7 +139,7 @@ function _streakBadgeHtml(streak){
 // ════════════════════════════════════════════
 function saveBasicSleep(h){
   const dk=getTodayKey();
-  dailyData[dk].sleepHours=parseFloat(h)||null;
+  getDay(dk).sleepHours=parseFloat(h)||null;
   saveDaily();
   const el=document.getElementById('sleep');
   if(el)el.value=Math.min(10,Math.round((parseFloat(h)||0)/0.9));
@@ -146,7 +147,7 @@ function saveBasicSleep(h){
 }
 function saveBasicActivity(level,steps){
   const dk=getTodayKey();
-  dailyData[dk].activityLevel=level;
+  getDay(dk).activityLevel=level;
   saveDaily();
   const el=document.getElementById('steps');
   if(el)el.value=steps;
@@ -600,6 +601,9 @@ function renderAdvancedHome(d){
   if(typeof renderWeeklyReview==='function')renderWeeklyReview();
 }
 
+// ════════════════════════════════════════════
+// PUBLIC API (von onclick=/onchange= benötigt)
+// ════════════════════════════════════════════
 window.setUIMode        =setUIMode;
 window.heroLogAction    =heroLogAction;
 window.saveBasicSleep   =saveBasicSleep;

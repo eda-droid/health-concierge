@@ -1,5 +1,6 @@
 // ════════════════════════════════════════════
-// STATE
+// STATE — globaler App-Zustand + sichere localStorage-Helfer (lsGet/lsSet)
+// Muss als erstes Modul geladen werden; keine onclick-Funktionen
 // ════════════════════════════════════════════
 let watchAvailable=false;
 let stagesAvailable=false;

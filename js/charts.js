@@ -1,7 +1,8 @@
 // ════════════════════════════════════════════
-// SVG LINE CHART — wiederverwendbar
+// CHARTS — wiederverwendbarer SVG-Linechart + Gewichts-/Maße-Trend-Card
 // points: [{x: 'YYYY-MM-DD', y: number}]
 // opts  : {colorHex, unit, w, h, labelEvery}
+// Öffentlich (onchange): renderWeightTrend
 // ════════════════════════════════════════════
 function _svgLineChart(points, opts={}){
   if(!points||points.length<2)return'';
@@ -102,3 +103,8 @@ function renderWeightTrend(){
   const weeks=recent.length>1?Math.round((new Date(recent[recent.length-1].date)-new Date(recent[0].date))/(7*24*3600*1000)*10)/10:0;
   document.getElementById('weight-trend-note').textContent=`Aktuell: ${last} ${cfg.unit} · ${recent.length} Messungen${weeks>0?' über '+weeks+' Wochen':''}. Im Tab "Profil & Körper" speichern.`;
 }
+
+// ════════════════════════════════════════════
+// PUBLIC API (von onchange= benötigt)
+// ════════════════════════════════════════════
+window.renderWeightTrend=renderWeightTrend;

@@ -1,5 +1,6 @@
 // ════════════════════════════════════════════
-// COMPUTE
+// COMPUTE — Berechnungen: RMR, Recovery-Score, Wochenplan, TDEE & Makro-Ziele
+// Reine Funktionen, keine onclick-Funktionen
 // ════════════════════════════════════════════
 function getProfile(){return{weight:parseFloat(val('p-weight'))||80,height:parseFloat(val('p-height'))||178,age:parseFloat(val('p-age'))||25,gender:val('p-gender')||'m'};}
 function calcRMR(p){return p.gender==='m'?Math.round(10*p.weight+6.25*p.height-5*p.age+5):Math.round(10*p.weight+6.25*p.height-5*p.age-161);}

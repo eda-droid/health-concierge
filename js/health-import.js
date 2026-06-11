@@ -1,5 +1,7 @@
 // ════════════════════════════════════════════
-// HEALTH IMPORT
+// HEALTH IMPORT — Apple-Watch-Daten (CSV/JSON/Webhook) parsen & übernehmen,
+// Schlafphasen-Analyse, Import-Status, App-Reset
+// Öffentlich (onclick): siehe PUBLIC-API-Block am Dateiende
 // ════════════════════════════════════════════
 
 // Whitelist: nur diese Feldnamen gelten als eindeutig "Aktive Kalorien"
@@ -224,6 +226,41 @@ function parseHealthCSV(content){
 }
 
 // ════════════════════════════════════════════
+// SCHLAFPHASEN-ANALYSE (aus Import-Daten)
+// ════════════════════════════════════════════
+function renderSleepAnalysis(sleepData){
+  const card=document.getElementById('sleep-quality-bar');
+  const metrics=document.getElementById('sleep-phase-metrics');
+  if(!sleepData||!card||!metrics)return;
+  const {deep=0,rem=0,light=0,total=0}=sleepData;
+  if(total<60)return;
+  const deepPct=total>0?Math.round(deep/total*100):0;
+  const remPct=total>0?Math.round(rem/total*100):0;
+  const hours=(total/60).toFixed(1);
+  const durationScore=total>=420&&total<=540?30:total>=360?20:10;
+  const deepScore=deepPct>=15&&deepPct<=25?35:deepPct>=10?20:5;
+  const remScore=remPct>=20&&remPct<=30?35:remPct>=15?20:5;
+  const qualityScore=Math.min(100,durationScore+deepScore+remScore);
+  const qualColor=qualityScore>=75?'var(--accent)':qualityScore>=50?'var(--warn)':'var(--danger)';
+  const qualText=qualityScore>=75?'Sehr gut':qualityScore>=50?'Ausreichend':'Schlecht';
+  metrics.style.display='grid';
+  metrics.innerHTML=`
+    <div class="summary-card"><div class="summary-val" style="font-size:18px;color:var(--info);">${hours}h</div><div class="summary-label">Schlafdauer</div></div>
+    <div class="summary-card"><div class="summary-val" style="font-size:18px;color:var(--accent);">${deepPct}%</div><div class="summary-label">Tiefschlaf</div></div>
+    <div class="summary-card"><div class="summary-val" style="font-size:18px;color:var(--warn);">${remPct}%</div><div class="summary-label">REM-Schlaf</div></div>`;
+  card.style.display='block';
+  document.getElementById('sleep-quality-pct').textContent=qualityScore+'/100 — '+qualText;
+  document.getElementById('sleep-quality-fill').style.cssText=`height:100%;border-radius:4px;width:${qualityScore}%;background:${qualColor};`;
+  let advice='';
+  if(deepPct<15)advice+='🔵 Tiefschlaf zu gering (Ziel 15–25%). Kein Alkohol, kühle Raumtemperatur, konstante Schlafzeiten. ';
+  if(remPct<20)advice+='🟡 REM zu gering (Ziel 20–30%). Stress reduzieren, kein Training zu spät. ';
+  if(total<420)advice+='⏰ Unter 7 Stunden — Recovery leidet stark. ';
+  if(total>540)advice+='😴 Über 9 Stunden kann auf Schlafprobleme hinweisen. ';
+  if(!advice)advice='✓ Schlafprofil optimal. Recovery maximiert.';
+  document.getElementById('sleep-advice').innerHTML=advice;
+}
+
+// ════════════════════════════════════════════
 // SILENT IMPORT (auto-fetch / programmatic)
 // ════════════════════════════════════════════
 function importHealthData(rawJson){
@@ -371,6 +408,10 @@ function wipeAll(){
     function(){try{localStorage.clear();}catch(e){}location.reload();});
 }
 
+// ════════════════════════════════════════════
+// PUBLIC API (von onclick=/onchange= benötigt)
+// ════════════════════════════════════════════
 window.importHealthFile       =importHealthFile;
 window.clearTodayWatchImport  =clearTodayWatchImport;
 window.wipeAll                =wipeAll;
+window._applyImportBurned     =_applyImportBurned;

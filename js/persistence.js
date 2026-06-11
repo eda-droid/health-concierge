@@ -1,5 +1,6 @@
 // ════════════════════════════════════════════
-// PERSISTENCE
+// PERSISTENCE — localStorage-Save/Load, Export/Import als JSON-Backup
+// Öffentlich (onclick): siehe PUBLIC-API-Block am Dateiende
 // ════════════════════════════════════════════
 function saveLog(){lsSet('hc_log',logData);lsSet('hc_pr',prData);}
 function saveMeasureData(){lsSet('hc_measure',measureData);}
@@ -100,5 +101,9 @@ function loadState(){
   });
 }
 
+// ════════════════════════════════════════════
+// PUBLIC API (von onclick=/onchange= benötigt)
+// ════════════════════════════════════════════
 window.exportAllData =exportAllData;
 window.importAllData =importAllData;
+window.saveAll       =saveAll;

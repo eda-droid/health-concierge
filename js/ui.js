@@ -1,5 +1,6 @@
 // ════════════════════════════════════════════
-// TABS
+// UI — Tabs, Modals, Toasts, Theme, Slider-Lock, Setup-Modal
+// Öffentlich (onclick): siehe PUBLIC-API-Block am Dateiende
 // ════════════════════════════════════════════
 function switchTab(id,el){
   // Exit any open training edit view when leaving the training tab
@@ -32,7 +33,7 @@ function toggleExpand(id){
 // ════════════════════════════════════════════
 function setGoal(g){
   currentGoal=g;
-  ['bulk','maintain','cut'].forEach(x=>{document.getElementById('goal-'+x).className='goal-btn'+(x===g?' active-'+x:'');});
+  ['bulk','maintain','cut'].forEach(x=>{const btn=document.getElementById('goal-'+x);if(btn)btn.className='goal-btn'+(x===g?' active-'+x:'');});
   updateAll();
 }
 
@@ -149,6 +150,9 @@ function _submitSetup(){
   if(typeof calcNavy==='function')calcNavy();
 }
 
+// ════════════════════════════════════════════
+// PUBLIC API (von onclick=/onchange= benötigt)
+// ════════════════════════════════════════════
 window.switchTab          =switchTab;
 window.setGoal            =setGoal;
 window.setTheme           =setTheme;
