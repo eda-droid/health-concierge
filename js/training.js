@@ -196,7 +196,7 @@ function removeCustomEx(d,e){customPlan[d].ex.splice(e,1);saveCustomPlan();editC
 // ════════════════════════════════════════════
 function changeLogDate(dir){logDateOffset+=dir;if(logDateOffset>0)logDateOffset=0;logPlanDay=null;renderLog();}
 function getPlanDayOptions(){
-  if(trainingMode==='advanced'&&customPlan)return customPlan.map((d,i)=>({key:'c'+i,label:daysShort[i]+' — '+d.title,exercises:d.ex.filter(e=>e.name).map(e=>({name:e.name,scheme:e.scheme||''}))}));
+  if(trainingMode==='advanced'&&customPlan)return customPlan.map((d,i)=>({key:'c'+i,label:d.title,exercises:d.ex.filter(e=>e.name).map(e=>({name:e.name,scheme:e.scheme||''}))}));
   const plan=weekPlanState||getWeekPlan(75);const seen={};const opts=[];
   plan.forEach((wt,i)=>{if(wt==='rest')return;const wp=workoutPlans[wt];if(seen[wt])return;seen[wt]=1;opts.push({key:wt,label:wp.label,exercises:wp.ex.map(e=>e[0])});});
   return opts;
