@@ -148,3 +148,11 @@ function _submitSetup(){
   updateAll();
   if(typeof calcNavy==='function')calcNavy();
 }
+
+window.switchTab          =switchTab;
+window.setGoal            =setGoal;
+window.setTheme           =setTheme;
+window.setHealthEnergyUnit=setHealthEnergyUnit;
+window.closeModal         =closeModal;
+window.unlockSliders      =unlockSliders;
+window._submitSetup       =_submitSetup;

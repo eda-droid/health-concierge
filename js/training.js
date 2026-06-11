@@ -721,4 +721,19 @@ function renderWeekFeedback(){
   el.innerHTML=msgs.join(' ');
 }
 
-window.toggleAnalyseBlock=toggleAnalyseBlock;
+window.toggleAnalyseBlock  =toggleAnalyseBlock;
+window.setTrainingMode     =setTrainingMode;
+window.changeLogDate       =changeLogDate;
+window.changeLogPlanDay    =changeLogPlanDay;
+window.addSet              =addSet;
+window.removeSet           =removeSet;
+window.removeExercise      =removeExercise;
+window.addExercise         =addExercise;
+window.showDayDetail       =showDayDetail;
+window.showCustomDayDetail =showCustomDayDetail;
+window.editCustomDay       =editCustomDay;
+window.addCustomEx         =addCustomEx;
+window.removeCustomEx      =removeCustomEx;
+window.cycleVariant        =cycleVariant;
+window.pickMuscleGroup     =pickMuscleGroup;
+window._toggleHistory      =_toggleHistory;

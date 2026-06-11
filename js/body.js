@@ -584,7 +584,16 @@ function _onGenderChange(){
   calcNavy();
 }
 
-window.toggleSchmerzenBlock=toggleSchmerzenBlock;
-window.renderMassCompare   =renderMassCompare;
-window.saveGoalsFromInputs =saveGoalsFromInputs;
-window.renderGoalsSection  =renderGoalsSection;
+window.toggleSchmerzenBlock  =toggleSchmerzenBlock;
+window.renderMassCompare     =renderMassCompare;
+window.saveGoalsFromInputs   =saveGoalsFromInputs;
+window.renderGoalsSection    =renderGoalsSection;
+window.togglePain            =togglePain;
+window.resetDeloadCycle      =resetDeloadCycle;
+window.saveMeasurement       =saveMeasurement;
+window.calcNavy              =calcNavy;
+window.editMeasurement       =editMeasurement;
+window.deleteMeasurement     =deleteMeasurement;
+window.cancelEditMeasurement =cancelEditMeasurement;
+window._setMeasureFilter     =_setMeasureFilter;
+window._loadMoreMeasurements =_loadMoreMeasurements;

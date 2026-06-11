@@ -114,7 +114,7 @@ function _waterCardHtml(){
   </div>`;
 }
 function _weeklySlot(){return`<div class="card" id="weekly-review-card"></div>`;}
-function _aiBox(msg){return`<div class="ai-box"><div class="ai-chip">${ICONS.zap} ANALYSE</div><div id="ai-recommendation">${msg}</div></div>`;}
+function _aiBox(msg){return`<div class="ai-box"><div class="ai-chip">⚡ ANALYSE</div><div id="ai-recommendation">${msg}</div></div>`;}
 function heroLogAction(){
   const btn=[...document.querySelectorAll('.bottom-tab')].find(b=>b.getAttribute('onclick')&&b.getAttribute('onclick').includes("'training'"));
   if(btn)btn.click();

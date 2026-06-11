@@ -99,3 +99,6 @@ function loadState(){
     if(d.activityLevel===undefined)d.activityLevel=null;
   });
 }
+
+window.exportAllData =exportAllData;
+window.importAllData =importAllData;

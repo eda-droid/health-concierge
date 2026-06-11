@@ -738,3 +738,14 @@ function renderSupps(protein){
     <div class="stat-row"><span class="sr-label">Magnesium Glycinat</span><span class="sr-val">${magDose}</span></div>
     <div class="stat-row"><span class="sr-label">Protein Shake</span><span class="sr-val">${Math.round(protein*.25)}g Post-Workout</span></div>`;
 }
+
+window.addMeal             =addMeal;
+window.removeMeal          =removeMeal;
+window.adjustKcal          =adjustKcal;
+window.toggleVitD          =toggleVitD;
+window.calcVitDAndCollapse =calcVitDAndCollapse;
+window.saveMealAsTemplate  =saveMealAsTemplate;
+window.cancelEditTemplate  =cancelEditTemplate;
+window.addTemplateToToday  =addTemplateToToday;
+window.editMealTemplate    =editMealTemplate;
+window.deleteMealTemplate  =deleteMealTemplate;

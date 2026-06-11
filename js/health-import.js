@@ -370,3 +370,7 @@ function wipeAll(){
   showModal('Alle Daten löschen?','Alle Kraftwerte, Maße, Pläne, Mahlzeiten und Einstellungen werden unwiderruflich gelöscht.',
     function(){try{localStorage.clear();}catch(e){}location.reload();});
 }
+
+window.importHealthFile       =importHealthFile;
+window.clearTodayWatchImport  =clearTodayWatchImport;
+window.wipeAll                =wipeAll;
