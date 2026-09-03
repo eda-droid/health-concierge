@@ -31,7 +31,7 @@ function _estimateTrainingKcal(dk){
   const dayLog=logData[dk];if(!dayLog||!dayLog.exercises)return 0;
   let totalSets=0;
   dayLog.exercises.forEach(ex=>{
-    ex.sets.forEach(s=>{if(parseFloat(s.kg)>0&&parseInt(s.reps)>0)totalSets++;});
+    (ex.sets||[]).forEach(s=>{if(isWorkSet(s))totalSets++;});
   });
   if(totalSets===0)return 0;
   const planDay=dayLog.planDay||'';
@@ -57,7 +57,7 @@ function computeAll(){
   } else {
     const todayLog=logData[today];
     const hasLoggedSets=todayLog&&todayLog.exercises&&
-      todayLog.exercises.some(ex=>ex.sets.some(s=>parseFloat(s.kg)>0&&parseInt(s.reps)>0));
+      todayLog.exercises.some(ex=>(ex.sets||[]).some(isWorkSet));
     if(hasLoggedSets){
       activityKcal=_estimateTrainingKcal(today);
       activitySource='training-log';

@@ -64,6 +64,20 @@ const MUSCLE_MAP={
   'Foam Rolling':'Mobilität','Dehnen':'Mobilität','Spaziergang':'Kardio',
   'Laufen':'Kardio','Fahrrad':'Kardio','Rudergerät':'Kardio',
   'Ellipsentrainer':'Kardio','Seilspringen':'Kardio',
+  // ── Glutes / Abduktoren (ergänzt)
+  'Hip Thrust':'Glutes','Barbell Hip Thrust':'Glutes','Bulgarian Split Squat':'Glutes',
+  'Bulgarian':'Glutes','Reverse Lunge':'Glutes','Ausfallschritt':'Glutes',
+  'Glute Bridge':'Glutes','Hip Thrust Maschine':'Glutes',
+  'RDL':'Hamstrings','Romanian Deadlift':'Hamstrings',
+  'Abduktion':'Abduktoren','Abduktoren':'Abduktoren','Hip Abduction':'Abduktoren',
+  'Seated Hip Abduction':'Abduktoren','Abduktoren Maschine':'Abduktoren',
+  'Hack Squat':'Quadrizeps','Beinpresse':'Quadrizeps',
+};
+// Gruppe → Hex, übernommen aus der gelöschten lokalen Map in renderMuscleGroupStats()
+const MUSCLE_COLORS={
+  'Brust':'#5B7FFF','Trizeps':'#7C5FFF','Rücken':'#00E5A0','Schulter':'#FFAD33',
+  'Bizeps':'#38C4F5','Quadrizeps':'#EC4899','Hamstrings':'#FF5757','Waden':'#FF8C57',
+  'Core':'#667085','Glutes':'#C77DFF','Abduktoren':'#9B7FFF',
 };
 const daysFull=['Montag','Dienstag','Mittwoch','Donnerstag','Freitag','Samstag','Sonntag'];
 const daysShort=['Mo','Di','Mi','Do','Fr','Sa','So'];

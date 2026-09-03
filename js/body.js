@@ -221,117 +221,111 @@ function _getMeasureFiltered(){
 function _setMeasureFilter(f){measureHistoryFilter=f;measureHistoryShown=5;renderMeasureHistory();}
 function _loadMoreMeasurements(){measureHistoryShown+=5;renderMeasureHistory();}
 
+const MEASURE_HISTORY_METRICS=[
+  {key:'weight',label:'Gewicht',unit:'kg'},
+  {key:'hip',label:'Hüfte',unit:'cm'},
+  {key:'waist',label:'Taille',unit:'cm'},
+  {key:'bf',label:'Körperfett',unit:'%'},
+  {key:'chest',label:'Brust',unit:'cm'},
+  {key:'arm',label:'Oberarm',unit:'cm'},
+  {key:'thigh',label:'Oberschenkel',unit:'cm'},
+];
+let _measureHistoryMetric='weight';
+let _measureHistoryObserver=null;
+function _measureNumber(value){return Number(value).toLocaleString('de-DE',{maximumFractionDigits:1});}
+function _measureDate(date){return new Date(date+'T12:00:00').toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit',year:'numeric'});}
+function _measureSeries(rows,key){
+  return rows.filter(m=>Number.isFinite(Number(m[key]))&&Number(m[key])>0).sort((a,b)=>a.date.localeCompare(b.date));
+}
+function _selectMeasureMetric(key){
+  if(!MEASURE_HISTORY_METRICS.some(m=>m.key===key))return;
+  _measureHistoryMetric=key;
+  const el=document.getElementById('measure-history');if(!el)return;
+  el.querySelectorAll('[data-measure-metric]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.measureMetric===key)));
+  _renderMeasureHistoryChart();
+}
+function _renderMeasureHistoryChart(){
+  const el=document.getElementById('measure-selected-chart');if(!el)return;
+  const metric=MEASURE_HISTORY_METRICS.find(m=>m.key===_measureHistoryMetric)||MEASURE_HISTORY_METRICS[0];
+  const series=_measureSeries(_getMeasureFiltered(),metric.key);
+  const title=metric.key==='weight'?'Gewichtsverlauf':metric.label+' · Verlauf';
+  if(series.length<2){
+    el.innerHTML=`<div class="measure-chart-heading"><strong>${title}</strong></div>
+      <p class="measure-chart-empty">${series.length?'Eine Messung vorhanden – für einen Verlauf fehlt eine Vergleichsmessung.':'Keine Messung im gewählten Zeitraum.'}</p>
+      <p class="measure-chart-note">Veränderung: —</p>`;
+    return;
+  }
+  const first=series[0],last=series[series.length-1];
+  const difference=Math.round((Number(last[metric.key])-Number(first[metric.key]))*10)/10;
+  const changeUnit=metric.key==='bf'?'Prozentpunkte':metric.unit;
+  // Kalenderabstände abbilden; die Breite folgt der Karte auch nach einem Tabwechsel.
+  const width=Math.max(240,el.clientWidth||340),height=150;
+  const pad={left:58,right:28,top:14,bottom:30};
+  const time=m=>Date.parse(m.date+'T00:00:00Z');
+  const start=time(first),span=time(last)-start||1;
+  const values=series.map(m=>Number(m[metric.key]));
+  const low=Math.min(...values),high=Math.max(...values);
+  const x=m=>pad.left+(time(m)-start)/span*(width-pad.left-pad.right);
+  const y=m=>high===low?(pad.top+height-pad.bottom)/2:pad.top+(high-Number(m[metric.key]))/(high-low)*(height-pad.top-pad.bottom);
+  const coordinates=series.map(m=>`${x(m)},${y(m)}`).join(' ');
+  const tickIndices=[...new Set([0,Math.floor((series.length-1)/2),series.length-1])];
+  const ticks=tickIndices.filter((i,n)=>n===0||n===tickIndices.length-1||x(series[i])-x(first)>65&&x(last)-x(series[i])>65);
+  const xLabels=ticks.map((i,n)=>`<text x="${x(series[i])}" y="${height-6}" text-anchor="${n===0?'start':n===ticks.length-1?'end':'middle'}">${series[i].date.slice(8)}.${series[i].date.slice(5,7)}.</text>`).join('');
+  const dots=series.map(m=>`<circle cx="${x(m)}" cy="${y(m)}" r="3" class="measure-chart-dot"><title>${_measureDate(m.date)}: ${_measureNumber(m[metric.key])} ${metric.unit}</title></circle>`).join('');
+  el.innerHTML=`<div class="measure-chart-heading"><strong>${title}</strong><span>${metric.unit}</span></div>
+    <svg viewBox="0 0 ${width} ${height}" role="img" aria-label="${title}: ${series.length} Messungen vom ${_measureDate(first.date)} bis ${_measureDate(last.date)}; zuletzt ${_measureNumber(last[metric.key])} ${metric.unit}">
+      <line x1="${pad.left}" y1="${height-pad.bottom}" x2="${width-pad.right}" y2="${height-pad.bottom}" class="measure-chart-rule"/>
+      <text x="${pad.left-8}" y="${y(series[values.indexOf(high)])+4}" text-anchor="end">${_measureNumber(high)}</text>
+      ${high!==low?`<text x="${pad.left-8}" y="${height-pad.bottom+4}" text-anchor="end">${_measureNumber(low)}</text>`:''}
+      <polyline points="${coordinates}" class="measure-chart-line"/>${dots}${xLabels}
+    </svg>
+    <p class="measure-chart-note">${difference>0?'+':''}${_measureNumber(difference)} ${changeUnit} · ${_measureDate(first.date)}–${_measureDate(last.date)} · ${series.length} Messungen</p>`;
+}
 function renderMeasureHistory(){
   const el=document.getElementById('measure-history');if(!el)return;
+  const historyOpen=!!el.querySelector('#measure-saved-list[open]');
+  const openDates=new Set([...el.querySelectorAll('[data-measure-date][open]')].map(row=>row.dataset.measureDate));
   if(!measureData.length){el.innerHTML='<p class="hint-text">Noch keine Messungen. Oben eintragen und speichern.</p>';return;}
-
-  const filtered=_getMeasureFiltered();
-
+  const filtered=[..._getMeasureFiltered()].sort((a,b)=>a.date.localeCompare(b.date));
   const filterDefs=[{k:'30d',l:'30 Tage'},{k:'90d',l:'3 Monate'},{k:'1y',l:'1 Jahr'},{k:'all',l:'Alle'}];
-  let html=`<div style="display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap;align-items:center;">
-    ${filterDefs.map(f=>{
-      const active=measureHistoryFilter===f.k;
-      return`<button onclick="_setMeasureFilter('${f.k}')" style="padding:5px 13px;border-radius:8px;font-size:11px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;border:1px solid ${active?'var(--accent)':'var(--border)'};background:${active?'var(--accent-dim)':'var(--surface)'};color:${active?'var(--accent)':'var(--muted)'};transition:all .18s;">${f.l}</button>`;
-    }).join('')}
-    <span style="font-size:10px;color:var(--muted);margin-left:auto;font-family:'DM Mono',monospace;">${filtered.length} / ${measureData.length}</span>
-  </div>`;
-
-  if(!filtered.length){
-    html+='<p class="hint-text">Keine Messungen im gewählten Zeitraum.</p>';
-    el.innerHTML=html;return;
-  }
-
-  const metrics=[
-    {key:'hip',label:'Hüfte',unit:'cm',color:'var(--purple)'},
-    {key:'weight',label:'Gewicht',unit:'kg',color:'var(--accent)'},
-    {key:'bf',label:'Körperfett',unit:'%',color:'var(--warn)'},
-    {key:'waist',label:'Taille',unit:'cm',color:'var(--info)'},
-    {key:'chest',label:'Brust',unit:'cm',color:'#EC4899'},
-    {key:'arm',label:'Oberarm',unit:'cm',color:'var(--accent)'},
-    {key:'thigh',label:'Oberschenkel',unit:'cm',color:'var(--info)'},
-  ];
-  const colorHexMap={
-    'var(--accent)':'#00E5A0',
-    'var(--warn)':'#FFAD33',
-    'var(--info)':'#5B7FFF',
-    'var(--purple)':'#9B7FFF',
-    '#EC4899':'#EC4899',
-  };
-  metrics.forEach(m=>{
-    const series=filtered.filter(d=>d[m.key]>0);if(!series.length)return;
-    const vals=series.map(d=>d[m.key]);
-    const first=vals[0],last=vals[vals.length-1];
-    const diff=Math.round((last-first)*10)/10;
-    const isNegativeGood=m.key==='bf'||m.key==='waist';
-    const diffColor=diff===0?'var(--muted)':((diff>0)===isNegativeGood?'var(--danger)':'var(--accent)');
-    const points=series.map(d=>({x:d.date,y:d[m.key]}));
-    const colorHex=colorHexMap[m.color]||'#00E5A0';
-    const chart=points.length>=2
-      ?_svgLineChart(points,{colorHex,unit:m.unit,h:64})
-      :`<div style="font-size:22px;font-weight:700;font-family:'DM Mono',monospace;color:${colorHex};padding:6px 0;">${last}${m.unit}</div>`;
-    html+=`<div style="margin-bottom:20px;">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-        <span style="font-size:13px;font-weight:600;">${m.label}</span>
-        <span style="font-size:11px;font-family:'DM Mono',monospace;">
-          <span style="color:var(--muted);">${last}${m.unit}</span>
-          &ensp;<span style="color:${diffColor};font-weight:600;">${diff>0?'+':''}${diff}${m.unit}</span>
-        </span>
-      </div>
-      ${chart}
-    </div>`;
+  let html=`<div class="measure-history-filters" aria-label="Zeitraum">
+    ${filterDefs.map(f=>`<button type="button" onclick="_setMeasureFilter('${f.k}')" aria-pressed="${measureHistoryFilter===f.k}">${f.l}</button>`).join('')}
+    <span>${filtered.length} von ${measureData.length} Messungen</span></div>`;
+  if(!filtered.length){el.innerHTML=html+'<p class="hint-text">Keine Messungen im gewählten Zeitraum.</p>';return;}
+  html+='<div class="measure-metric-grid" role="group" aria-label="Messwert für den Verlauf wählen">';
+  MEASURE_HISTORY_METRICS.forEach(metric=>{
+    const series=_measureSeries(filtered,metric.key),latest=series[series.length-1];
+    html+=`<button type="button" class="measure-metric" data-measure-metric="${metric.key}" onclick="_selectMeasureMetric('${metric.key}')" aria-pressed="${_measureHistoryMetric===metric.key}" aria-controls="measure-selected-chart">
+      <span>${metric.label}</span><strong>${latest?_measureNumber(latest[metric.key])+' <small>'+metric.unit+'</small>':'—'}</strong>
+      <span class="measure-metric-date">${latest?_measureDate(latest.date):'Keine Messung'}</span></button>`;
   });
-
-  const MONTH_NAMES=['Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'];
-  const sorted=[...filtered].reverse();
-  const visible=sorted.slice(0,measureHistoryShown);
-  const remaining=sorted.length-measureHistoryShown;
-
-  html+=`<div style="border-top:1px solid var(--border);margin-top:6px;padding-top:14px;">`;
-
-  let currentMonthKey='';
-  let itemIdx=0;
+  html+='</div><div id="measure-selected-chart" class="measure-selected-chart" aria-live="polite"></div>';
+  const sorted=[...filtered].reverse(),visible=sorted.slice(0,measureHistoryShown);
+  const remaining=sorted.length-visible.length;
+  html+=`<details id="measure-saved-list" class="measure-saved-list"${historyOpen?' open':''}><summary>Gespeicherte Messungen <span>(${filtered.length})</span></summary>`;
   visible.forEach(m=>{
-    const mk=m.date.slice(0,7);
-    if(mk!==currentMonthKey){
-      const [y,mo]=mk.split('-');
-      const topMargin=itemIdx>0?'margin-top:14px;':'';
-      html+=`<div style="font-size:10px;color:var(--muted);font-family:'DM Mono',monospace;letter-spacing:.07em;text-transform:uppercase;${topMargin}margin-bottom:8px;">${MONTH_NAMES[parseInt(mo,10)-1]} ${y}</div>`;
-      currentMonthKey=mk;
-    }
     const isEditing=editingMeasureDate===m.date;
-    const rowStyle=isEditing
-      ?'background:rgba(255,173,51,0.07);border:1px solid rgba(255,173,51,0.25);border-radius:10px;padding:10px 12px;margin-bottom:8px;'
-      :'border-bottom:1px solid var(--border);padding:9px 0;margin-bottom:0;';
-    const day=m.date.slice(8);
-    const moShort=MONTH_NAMES[parseInt(m.date.slice(5,7),10)-1].slice(0,3);
-    const parts=[];
-    if(m.weight>0)parts.push(`${m.weight} kg`);
-    if(m.bf>0)parts.push(`${m.bf}% KFA`);
-    if(m.waist>0)parts.push(`T ${m.waist}`);
-    if(m.chest>0)parts.push(`B ${m.chest}`);
-    if(m.arm>0)parts.push(`A ${m.arm}`);
-    if(m.thigh>0)parts.push(`S ${m.thigh}`);
-    html+=`<div style="${rowStyle}display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
-      <div style="flex:1;min-width:0;">
-        <div style="font-size:12px;font-weight:600;font-family:'DM Mono',monospace;color:${isEditing?'var(--warn)':'var(--text)'};">
-          ${day}. ${moShort}${isEditing?'&ensp;<span style="font-size:10px;font-weight:400;">(wird bearbeitet)</span>':''}
-        </div>
-        <div style="font-size:11px;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${parts.join(' · ')||'—'}</div>
-      </div>
-      <div style="display:flex;gap:6px;flex-shrink:0;">
-        <button onclick="editMeasurement('${m.date}')" style="background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:5px 10px;font-size:11px;color:var(--accent);cursor:pointer;font-family:'DM Sans',sans-serif;font-weight:500;transition:border-color .18s;" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">Bearbeiten</button>
-        <button onclick="deleteMeasurement('${m.date}')" style="background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:5px 10px;font-size:11px;color:var(--danger);cursor:pointer;font-family:'DM Sans',sans-serif;font-weight:500;transition:border-color .18s;" onmouseover="this.style.borderColor='var(--danger)'" onmouseout="this.style.borderColor='var(--border)'">Löschen</button>
-      </div>
-    </div>`;
-    itemIdx++;
+    const parts=MEASURE_HISTORY_METRICS.filter(metric=>Number(m[metric.key])>0).map(metric=>`${metric.label}: ${_measureNumber(m[metric.key])} ${metric.unit}`);
+    if(Number(m.neck)>0)parts.push('Hals: '+_measureNumber(m.neck)+' cm');
+    const summary=[m.weight>0?_measureNumber(m.weight)+' kg':'',m.bf>0?_measureNumber(m.bf)+' % KFA':''].filter(Boolean).join(' · ')||'Körpermaße';
+    html+=`<details class="measure-saved-entry${isEditing?' is-editing':''}" data-measure-date="${m.date}"${openDates.has(m.date)||isEditing?' open':''}>
+      <summary><span>${_measureDate(m.date)}${isEditing?' · wird bearbeitet':''}</span><span>${summary}</span></summary>
+      <p>${parts.join(' · ')||'—'}</p>
+      <div class="measure-entry-actions"><button type="button" class="btn-ghost" onclick="editMeasurement('${m.date}')">Bearbeiten</button>
+      <button type="button" class="btn-ghost measure-delete" onclick="deleteMeasurement('${m.date}')">Löschen</button></div></details>`;
   });
-
-  if(remaining>0){
-    html+=`<button onclick="_loadMoreMeasurements()" class="btn-dashed" style="margin-top:10px;">+ ${Math.min(remaining,5)} weitere laden (${remaining} übrig)</button>`;
-  }
-
-  html+='</div>';
+  if(remaining>0)html+=`<button type="button" onclick="_loadMoreMeasurements()" class="btn-dashed">+ ${Math.min(remaining,5)} weitere laden (${remaining} übrig)</button>`;
+  html+='</details>';
   el.innerHTML=html;
+  _renderMeasureHistoryChart();
+  if(!_measureHistoryObserver&&typeof ResizeObserver!=='undefined'){
+    let lastWidth=0;
+    _measureHistoryObserver=new ResizeObserver(entries=>{
+      const width=entries[0].contentRect.width;
+      if(width>0&&width!==lastWidth){lastWidth=width;_renderMeasureHistoryChart();}
+    });
+    _measureHistoryObserver.observe(el);
+  }
   populateCompareDates();
   renderBodyHero();
 }
@@ -416,6 +410,30 @@ function renderMassCompare(){
 // ════════════════════════════════════════════
 // BODY HERO CARD
 // ════════════════════════════════════════════
+// Verschiebt einen YYYY-MM-DD-Key um Kalendertage. T00:00:00 erzwingt lokale
+// statt UTC-Interpretation (siehe _localDateKey).
+function _shiftDateKey(dk,days){
+  const d=new Date(dk+'T00:00:00');
+  d.setDate(d.getDate()+days);
+  return _localDateKey(d);
+}
+// Mittelwert des Gewichts über die 7 Kalendertage bis einschließlich endDateKey.
+// Fensterprüfung ausschließlich per Stringvergleich — kein new Date().
+function weeklyWeightMean(endDateKey){
+  const fromKey=_shiftDateKey(endDateKey,-6);
+  const inWindow=measureData.filter(m=>m.weight>0&&m.date>=fromKey&&m.date<=endDateKey);
+  if(inWindow.length<3)return null; // Mittel aus 1-2 Werten ist kein Trend
+  const mean=Math.round(inWindow.reduce((a,m)=>a+m.weight,0)/inWindow.length*100)/100;
+  return{mean,n:inWindow.length,from:fromKey,to:endDateKey};
+}
+function weightTrend(){
+  const today=getTodayKey();
+  const current=weeklyWeightMean(today);
+  const previous=weeklyWeightMean(_shiftDateKey(today,-7));
+  if(!current||!previous)return null;
+  const deltaKg=Math.round((current.mean-previous.mean)*100)/100;
+  return{current,previous,deltaKg,n:current.n};
+}
 function renderBodyHero(){
   const el=document.getElementById('body-hero-content');
   if(!el)return;
@@ -440,6 +458,15 @@ function renderBodyHero(){
 
   const diffStr=hipDiff!==null?(hipDiff>0?`+${hipDiff}`:`${hipDiff}`)+' cm seit Start':'';
   const diffColor=hipDiff!==null?(hipDiff>0?'var(--accent)':hipDiff<0?'var(--danger)':'var(--muted)'):'var(--muted)';
+
+  const wkMean=weeklyWeightMean(getTodayKey());
+  const wkTrend=weightTrend();
+  const weekMeanHtml=wkMean
+    ?`<div style="font-size:11px;color:var(--muted);margin-top:4px;font-family:'DM Mono',monospace;">Ø 7 Tage: ${wkMean.mean} kg (${wkMean.n} Messungen)</div>`
+    :`<div style="font-size:11px;color:var(--muted);margin-top:4px;">Ø 7 Tage: zu wenig Messungen</div>`;
+  const weekTrendHtml=wkTrend
+    ?`<div style="font-size:11px;color:var(--muted);margin-top:2px;font-family:'DM Mono',monospace;">${wkTrend.deltaKg>0?'+':''}${wkTrend.deltaKg} kg/Woche</div>`
+    :'';
 
   let whrHtml='';
   if(whr){
@@ -468,6 +495,8 @@ function renderBodyHero(){
           ${wNow||'—'}<span style="font-size:12px;font-weight:400;color:var(--muted);">kg</span>
         </div>
         ${wDiff!==null?`<div style="font-size:11px;color:${wDiff<0?'var(--accent)':'var(--muted)'};font-family:'DM Mono',monospace;">${wDiff>0?'+':''}${wDiff} kg</div>`:''}
+        ${weekMeanHtml}
+        ${weekTrendHtml}
       </div>
     </div>
     ${whrHtml}`;
@@ -609,6 +638,9 @@ window.calcNavy              =calcNavy;
 window.editMeasurement       =editMeasurement;
 window.deleteMeasurement     =deleteMeasurement;
 window.cancelEditMeasurement =cancelEditMeasurement;
+window._selectMeasureMetric  =_selectMeasureMetric;
 window._setMeasureFilter     =_setMeasureFilter;
 window._loadMoreMeasurements =_loadMoreMeasurements;
 window._onGenderChange       =_onGenderChange;
+window.weeklyWeightMean      =weeklyWeightMean;
+window.weightTrend           =weightTrend;

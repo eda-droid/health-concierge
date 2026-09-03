@@ -25,23 +25,36 @@ function _toggleHistory(name){
     if(chevEl)chevEl.textContent='▲';
   }
 }
+// Arbeitssätze zählen auch ohne Zusatzgewicht; Warm-ups nie.
+function isWorkSet(s){
+  return !!s&&parseInt(s.reps)>0&&s.warmup!==true;
+}
+function getSetTonnage(s){
+  if(!isWorkSet(s))return 0;
+  const kg=parseFloat(s.kg),reps=parseInt(s.reps);
+  return Number.isFinite(kg)&&kg>0?kg*reps:0;
+}
 function getExerciseHistory(name,limit=10){
   const results=[];
   const keys=Object.keys(logData).sort().reverse();
   for(const dk of keys){
     const d=logData[dk];if(!d)continue;
-    const ex=d.exercises.find(e=>e.name===name);if(!ex)continue;
-    const valid=ex.sets.filter(s=>parseFloat(s.kg)>0&&parseInt(s.reps)>0);
+    const ex=(d.exercises||[]).find(e=>e.name===name);if(!ex)continue;
+    const valid=(ex.sets||[]).filter(isWorkSet);
     if(!valid.length)continue;
-    const top=valid.reduce((b,s)=>parseFloat(s.kg)>=parseFloat(b.kg)?s:b,valid[0]);
-    const volume=Math.round(valid.reduce((sum,s)=>sum+(parseFloat(s.kg)||0)*(parseInt(s.reps)||0),0));
-    results.push({date:dk,maxKg:parseFloat(top.kg),bestReps:parseInt(top.reps)||0,setsCount:valid.length,volume});
+    const top=valid.reduce((b,s)=>(parseFloat(s.kg)||0)>=(parseFloat(b.kg)||0)?s:b,valid[0]);
+    const volume=Math.round(valid.reduce((sum,s)=>sum+getSetTonnage(s),0));
+    results.push({date:dk,maxKg:parseFloat(top.kg)||0,bestReps:parseInt(top.reps)||0,setsCount:valid.length,volume});
     if(results.length>=limit)break;
   }
   return results;
 }
+// Spaltenraster des Trainings-Logs: #, kg, Reps, RIR, Volumen, Löschen.
+// Header- und Satz-Zeile teilen es sich, damit die Labels über den Feldern bleiben.
+const LOG_GRID_COLS='26px 1fr 1fr 1fr 58px 24px';
 const MUSCLE_OPTIONS=['Brust','Rücken','Schulter','Bizeps','Trizeps',
-  'Core','Quadrizeps','Hamstrings','Gesäß','Waden','Kardio','Mobilität'];
+  'Core','Quadrizeps','Hamstrings','Gesäß','Waden','Kardio','Mobilität',
+  'Glutes','Abduktoren'];
 function getMuscleGroup(name){
   if(!name)return'';
   if(MUSCLE_MAP[name])return MUSCLE_MAP[name];
@@ -90,6 +103,7 @@ function setTrainingMode(mode){
     saveCustomPlan();
   }
   trainingMode=mode;applyTrainingModeUI();saveAll();renderWeekTab();
+  renderLog(); // baut Einheiten-Select + Übungen für den neuen Modus neu auf
 }
 function applyTrainingModeUI(){
   const mb=document.getElementById('mode-beginner'),ma=document.getElementById('mode-advanced');
@@ -106,6 +120,7 @@ function applyTrainingModeUI(){
 // WEEK PLAN
 // ════════════════════════════════════════════
 function renderWeekTab(recoveryOverride){
+  if(typeof renderProgramLine==='function')renderProgramLine();
   const el=document.getElementById('week-grid');if(!el)return;
   const c=computeAll();
   const recovery=recoveryOverride!==undefined?recoveryOverride:c.recovery;
@@ -131,16 +146,66 @@ function renderWeekTab(recoveryOverride){
   if(ws)ws.innerHTML=recovery>=75?`<strong>Optimale Woche.</strong> 5 Trainingseinheiten geplant.`:recovery>=50?`<strong>Moderate Woche.</strong> 4 Einheiten, kürzere Sessions.`:`<strong>Erholungswoche.</strong> 2–3 leichte Einheiten.`;
   renderVolumeTracker();
 }
-function showDayDetail(i,wt){
-  document.querySelectorAll('#week-grid .day-card').forEach((c,j)=>c.classList.toggle('today-card',j===i));
-  const wp=workoutPlans[wt]||workoutPlans.rest;
+// Rendert NUR die obere Detailkarte (#selected-workout) + die today-card-Markierung
+// im #week-grid. Setzt/liest kein logPlanDay, ruft weder applyPlanDayToLog noch
+// renderLog auf — das bleibt Sache der Aufrufer.
+// key: 'c<idx>' (customPlan) oder ein workoutPlans-Key. Unbekannt/leer -> Neutralzustand.
+// markGrid=false: today-card-Markierung im #week-grid unangetastet lassen —
+// gebraucht, wenn die Auswahl nicht den angezeigten Wochentag verschieben soll.
+function _renderSelectedWorkout(key,_reserved,markGrid=true){
+  const sw=document.getElementById('selected-workout');
+  if(!sw)return;
+  const cards=document.querySelectorAll('#week-grid .day-card');
   const blocked=getBlockedExercises();
+
+  const cm=typeof key==='string'?key.match(/^c(\d+)$/):null;
+  if(cm){
+    const dayIdx=parseInt(cm[1],10);
+    const day=customPlan&&customPlan[dayIdx];
+    if(!day){_resetTrainingEdit();return;}
+    // Kein Grid-Toggle mehr: das Wochenraster markiert das gewählte Datum,
+    // nicht die Einheit — das erledigt renderCustomWeekGrid().
+    // Programm-Einheit: Übungen + Schema aus der Phase des gewählten Datums.
+    const progEx=day.programKey&&typeof getProgramExercises==='function'
+      ?getProgramExercises(day.programKey,getProgramWeek(getDateKey(logDateOffset))):null;
+    const exList=progEx||day.ex;
+    let rows='';
+    if(exList.length){
+      rows=`<table class="workout-table">${exList.map(e=>{const isBlocked=blocked.includes(e.name);return`<tr style="${isBlocked?'opacity:.4;text-decoration:line-through;':''}">`+`<td>${e.name||'—'}${isBlocked?' ⚠':''}</td><td>${e.scheme||''}</td></tr>`;}).join('')}</table>`;
+    }else{rows='<p class="hint-text">Keine Übungen eingetragen.</p>';}
+    sw.innerHTML=`
+      <div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:12px;">
+        <div class="card-label" style="margin:0;">${day.title}</div>
+        <a onclick="editCustomDay(${dayIdx})" style="font-size:11px;color:var(--muted);cursor:pointer;text-decoration:underline;white-space:nowrap;flex-shrink:0;">Bearbeiten</a>
+      </div>
+      ${rows}
+      ${blocked.length?`<p style="font-size:11px;color:var(--danger);margin-top:10px;">⚠ Gesperrt wegen Schmerzen: ${blocked.join(', ')}</p>`:''}`;
+    return;
+  }
+  if(key==='__free'){
+    sw.innerHTML='<div class="card-label" style="margin-bottom:12px;">Freies Training</div><p class="hint-text">Übungen frei im Log eintragen.</p>';
+    return;
+  }
+
+  const wp=key?workoutPlans[key]:null;
+  if(!wp){_resetTrainingEdit();return;}
+  const plan=weekPlanState||getWeekPlan(75);
+  const i=plan.indexOf(key); // erstes Vorkommen — deckt sich mit dem Dedup in getPlanDayOptions()
+  if(markGrid)cards.forEach((c,j)=>c.classList.toggle('today-card',j===i));
   let rows='';
   if(wp.ex.length){
     rows=`<table class="workout-table">${wp.ex.map(e=>{const isBlocked=blocked.includes(e[0]);return`<tr style="${isBlocked?'opacity:.4;text-decoration:line-through;':''}">`+`<td>${e[0]}${isBlocked?' ⚠':''}</td><td>${e[1]}</td><td>${e[2]}</td></tr>`;}).join('')}</table>`;
   } else{rows='<p class="hint-text">Heute: Aktive Regeneration oder Ruhetag.</p>';}
-  document.getElementById('selected-workout').innerHTML=`<div class="card-label" style="margin-bottom:12px;">${daysFull[i]} — ${wp.label}</div>${rows}${blocked.length?`<p style="font-size:11px;color:var(--danger);margin-top:10px;">⚠ Gesperrt wegen Schmerzen: ${blocked.join(', ')}</p>`:''}`;
+  const label=i>=0?`${daysFull[i]} — ${wp.label}`:wp.label;
+  sw.innerHTML=`<div class="card-label" style="margin-bottom:12px;">${label}</div>${rows}${blocked.length?`<p style="font-size:11px;color:var(--danger);margin-top:10px;">⚠ Gesperrt wegen Schmerzen: ${blocked.join(', ')}</p>`:''}`;
+}
+function showDayDetail(i,wt){
+  _renderSelectedWorkout(wt);
   if(wt!=='rest'&&wt!=='recovery'){
+    // Log-Datum auf diesen Wochentag der aktuellen Woche setzen — zukünftige
+    // Tage bleiben reine Vorschau, das Log-Datum bleibt dort unverändert.
+    const offset=i-((new Date().getDay()+6)%7);
+    if(offset<=0)logDateOffset=offset;
     logPlanDay=wt;
     const dk=getDateKey(logDateOffset);
     if(!logData[dk])logData[dk]={exercises:[],planDay:null};
@@ -148,33 +213,48 @@ function showDayDetail(i,wt){
     renderLog();
   }
 }
+// Zeigt nicht den Plan, sondern was an den Daten dieser Woche eingetragen ist.
+// Einzige Quelle: logData[dk].planDay. customPlan ist nur noch die Bibliothek,
+// aus der der Titel zur ID aufgelöst wird.
 function renderCustomWeekGrid(){
+  const grid=document.getElementById('week-grid');if(!grid)return;
   const todayIdx=(new Date().getDay()+6)%7;
-  const today=getTodayKey();
-  document.getElementById('week-grid').innerHTML=customPlan.map((day,i)=>{
-    const isT=i===todayIdx;
-    const dk=getDateKey(i-todayIdx);
-    const autoRest=dk<today&&!hasLogEntry(dk);
-    return`<div class="day-card${isT?' today-card':''}" onclick="showCustomDayDetail(${i})"><div class="day-name">${daysShort[i]}</div><div class="day-type" style="color:${autoRest?'var(--muted)':'inherit'}">${autoRest?'Ruhetag':day.title.split(' ').slice(0,2).join(' ')}</div>${autoRest?'<span style="font-size:8px;color:var(--muted);padding:2px 4px;">—</span>':'<span class="badge badge-blue" style="font-size:8px;padding:2px 4px;">Eigen</span>'}</div>`;
-  }).join('');
+  let html='';
+  for(let i=0;i<7;i++){
+    const offset=i-todayIdx;
+    const dk=getDateKey(offset);
+    const planDay=(logData[dk]||{}).planDay;
+    const cm=typeof planDay==='string'?planDay.match(/^c(\d+)$/):null;
+    const unit=cm&&customPlan?customPlan[parseInt(cm[1],10)]:null;
+    const empty=!planDay;
+    const title=unit?unit.title.split(' ').slice(0,2).join(' ')
+      :planDay==='__free'?'Freies Training'
+      :'—';
+    // Vergangener Tag ohne Einheit: dezenter Hinweis statt Umdeutung.
+    // Heute und Zukunft bleiben bei "—" ohne Zusatz.
+    const badge=hasLogEntry(dk)
+      ?'<span class="badge badge-blue" style="font-size:8px;padding:2px 4px;">geloggt</span>'
+      :(empty&&offset<0
+        ?'<span style="font-size:8px;color:var(--muted);padding:2px 4px;">nichts eingetragen</span>'
+        :'');
+    html+=`<div class="day-card${offset===logDateOffset?' today-card':''}" style="${empty?'opacity:.55;':''}" onclick="selectLogDate(${offset})">`
+      +`<div class="day-name">${daysShort[i]}</div>`
+      +`<div class="day-type"${empty?' style="color:var(--muted);"':''}>${title}</div>`
+      +badge
+      +'</div>';
+  }
+  grid.innerHTML=html;
 }
-function showCustomDayDetail(dayIdx){
-  document.querySelectorAll('#week-grid .day-card').forEach((c,i)=>c.classList.toggle('today-card',i===dayIdx));
-  const day=customPlan[dayIdx];const blocked=getBlockedExercises();
-  let rows='';
-  if(day.ex.length){
-    rows=`<table class="workout-table">${day.ex.map(e=>{const isBlocked=blocked.includes(e.name);return`<tr style="${isBlocked?'opacity:.4;text-decoration:line-through;':''}">`+`<td>${e.name||'—'}${isBlocked?' ⚠':''}</td><td>${e.scheme||''}</td></tr>`;}).join('')}</table>`;
-  }else{rows='<p class="hint-text">Keine Übungen eingetragen.</p>';}
-  document.getElementById('selected-workout').innerHTML=`
-    <div class="card-label" style="margin-bottom:12px;">${daysFull[dayIdx]} — ${day.title}</div>
-    ${rows}
-    ${blocked.length?`<p style="font-size:11px;color:var(--danger);margin-top:10px;">⚠ Gesperrt wegen Schmerzen: ${blocked.join(', ')}</p>`:''}
-    <button class="btn-primary" onclick="editCustomDay(${dayIdx})" style="margin-top:14px;width:100%;">✏️ Bearbeiten</button>`;
-  logPlanDay='c'+dayIdx;
-  const _dk=getDateKey(logDateOffset);
-  if(!logData[_dk])logData[_dk]={exercises:[],planDay:null};
-  applyPlanDayToLog(_dk,logPlanDay);
+// Wählt ein Datum aus. Leitet bewusst KEINE Einheit ab — ein Tag ohne Eintrag
+// bleibt leer, bis im Log explizit eine Einheit gewählt wird.
+function selectLogDate(offset){
+  logDateOffset=offset;
+  const dk=getDateKey(offset);
+  if(!logData[dk])logData[dk]={exercises:[],planDay:null};
+  logPlanDay=logData[dk].planDay||null;
   renderLog();
+  renderCustomWeekGrid();
+  _renderSelectedWorkout(logPlanDay,undefined,false);
 }
 function editCustomDay(dayIdx){
   document.querySelectorAll('#week-grid .day-card').forEach((c,i)=>c.classList.toggle('today-card',i===dayIdx));
@@ -185,14 +265,13 @@ function editCustomDay(dayIdx){
     <button class="del-btn" onclick="removeCustomEx(${dayIdx},${ei})">✕</button>
   </div>`).join('');
   document.getElementById('selected-workout').innerHTML=`
-    <div class="card-label" style="margin-bottom:12px;">${daysFull[dayIdx]} — Eigener Plan</div>
-    <div class="form-group" style="margin-bottom:14px;"><label>TAG-NAME / FOKUS</label><input id="custom-day-title" value="${day.title}" onblur="updateCustomDayTitle(${dayIdx},this.value)"></div>
+    <div class="card-label" style="margin-bottom:12px;">${day.title} — bearbeiten</div>
+    <div class="form-group" style="margin-bottom:14px;"><label>NAME / FOKUS DER EINHEIT</label><input id="custom-day-title" value="${day.title}" onblur="updateCustomDayTitle(${dayIdx},this.value)"></div>
     <div style="display:grid;grid-template-columns:1fr 90px 28px;gap:7px;margin-bottom:6px;"><span class="log-col-label" style="text-align:left;">Übung</span><span class="log-col-label">Sätze×Reps</span><span></span></div>
     ${rows}
     <button class="btn-dashed" onclick="addCustomEx(${dayIdx})" style="margin-top:8px;">+ Übung hinzufügen</button>
     ${blocked.length?`<p style="font-size:11px;color:var(--danger);margin-top:12px;">⚠ Schmerz-Bypass: ${blocked.join(', ')}</p>`:''}
-    <button class="btn-primary" onclick="showCustomDayDetail(${dayIdx})" style="margin-top:14px;width:100%;">✓ Fertig</button>`;
-  logPlanDay='c'+dayIdx;renderLog();
+    <button class="btn-primary" onclick="_renderSelectedWorkout('c${dayIdx}',undefined,false)" style="margin-top:14px;width:100%;">✓ Fertig</button>`;
 }
 function updateCustomEx(d,e,field,v){customPlan[d].ex[e][field]=v;saveCustomPlan();}
 function updateCustomDayTitle(d,v){customPlan[d].title=v;saveCustomPlan();renderCustomWeekGrid();}
@@ -202,13 +281,33 @@ function removeCustomEx(d,e){customPlan[d].ex.splice(e,1);saveCustomPlan();editC
 // ════════════════════════════════════════════
 // TRAININGS-LOG
 // ════════════════════════════════════════════
-function changeLogDate(dir){logDateOffset+=dir;if(logDateOffset>0)logDateOffset=0;logPlanDay=null;renderLog();}
+// Die Einheit eines Datums steht ausschließlich im Log. Keine Ableitung aus
+// dem Wochentag — ein Tag ohne Eintrag bleibt leer (null).
+function _planDayForDate(dk){
+  return(logData[dk]&&logData[dk].planDay)||null;
+}
+function _toggleUnitPicker(){
+  const p=document.getElementById('log-unit-picker');
+  if(!p)return;
+  p.style.display=p.style.display==='none'?'block':'none';
+}
+function changeLogDate(dir){
+  logDateOffset+=dir;if(logDateOffset>0)logDateOffset=0;
+  const dk=getDateKey(logDateOffset);
+  if(!logData[dk])logData[dk]={exercises:[],planDay:null};
+  // Nur Datum wechseln — planDay wird gelesen, nie abgeleitet oder überschrieben.
+  logPlanDay=_planDayForDate(dk);
+  renderLog();
+  renderCustomWeekGrid();
+  _renderSelectedWorkout(logPlanDay,undefined,false);
+}
 function hasLogEntry(dk){
   const d=logData[dk];
   if(!d||!d.exercises||!d.exercises.length)return false;
   return d.exercises.some(ex=>ex.sets&&ex.sets.some(s=>s.kg||s.reps));
 }
 function getPlanDayOptions(){
+  // Bibliothek von Einheiten — Index ist die ID, kein Wochentag.
   if(trainingMode==='advanced'&&customPlan)return customPlan.map((d,i)=>({key:'c'+i,label:d.title,exercises:d.ex.filter(e=>e.name).map(e=>({name:e.name,scheme:e.scheme||''}))}));
   const plan=weekPlanState||getWeekPlan(75);const seen={};const opts=[];
   plan.forEach((wt,i)=>{if(wt==='rest')return;const wp=workoutPlans[wt];if(seen[wt])return;seen[wt]=1;opts.push({key:wt,label:wp.label,exercises:wp.ex.map(e=>e[0])});});
@@ -229,17 +328,28 @@ function renderLog(){
   document.getElementById('log-date-label').textContent=formatDateLabel(logDateOffset);
   if(!logData[dk])logData[dk]={exercises:[],planDay:null};
   const opts=getPlanDayOptions();
-  const todayIdx=(new Date().getDay()+6)%7;
-  let suggested;
-  if(trainingMode==='advanced'&&customPlan)suggested='c'+todayIdx;
-  else{const plan=weekPlanState||getWeekPlan(75);suggested=plan[todayIdx];if(suggested==='rest')suggested=opts.length?opts[0].key:null;}
-  if(logPlanDay===null)logPlanDay=logData[dk].planDay||suggested||(opts.length?opts[0].key:null);
-  const sel=document.getElementById('log-day-select');if(!sel)return;
-  sel.innerHTML=opts.map(o=>`<option value="${o.key}" ${o.key===logPlanDay?'selected':''}>${o.label}</option>`).join('')+'<option value="__free">Freies Training</option>';
-  if(logPlanDay==='__free')sel.value='__free';
-  if(logData[dk].exercises.length===0&&logPlanDay!=='__free'){
+  const isValidKey=k=>k==='__free'||opts.some(o=>o.key===k);
+  // Nach Moduswechsel kann logPlanDay auf eine Einheit zeigen, die es in den
+  // aktuellen Optionen nicht mehr gibt -> zurücksetzen statt ungültig anzeigen.
+  if(logPlanDay!==null&&!isValidKey(logPlanDay))logPlanDay=null;
+  // Keine Ableitung: ein Datum ohne gespeicherte Einheit bleibt leer.
+  if(logPlanDay===null)logPlanDay=_planDayForDate(dk);
+  if(logPlanDay!==null&&!isValidKey(logPlanDay))logPlanDay=null;
+  const unitLbl=document.getElementById('log-unit-name');
+  if(unitLbl){
     const opt=opts.find(o=>o.key===logPlanDay);
-    if(opt)logData[dk].exercises=opt.exercises.map(e=>{const n=typeof e==='string'?e:e.name;const sc=typeof e==='object'?e.scheme||'':'';return{name:n,scheme:sc,sets:[{kg:'',reps:''}],fromPlan:true,muscleGroup:getMuscleGroup(n)||''};});
+    unitLbl.textContent=opt?opt.label:logPlanDay==='__free'?'Freies Training':'Keine Einheit gewählt';
+  }
+  const sel=document.getElementById('log-day-select');if(!sel)return;
+  sel.innerHTML=`<option value="" ${logPlanDay===null?'selected':''}>Einheit wählen…</option>`
+    +opts.map(o=>`<option value="${o.key}" ${o.key===logPlanDay?'selected':''}>${o.label}</option>`).join('')
+    +`<option value="__free" ${logPlanDay==='__free'?'selected':''}>Freies Training</option>`;
+  if(logPlanDay!==null&&logData[dk].exercises.length===0&&logPlanDay!=='__free'){
+    const opt=_planDaySource(logPlanDay,dk);
+    if(opt)logData[dk].exercises=opt.exercises.map(e=>{const n=typeof e==='string'?e:e.name;const sc=typeof e==='object'?e.scheme||'':'';
+      const cnt=(typeof e==='object'&&e.sets>0)?e.sets:1;
+      const sets=[];for(let i=0;i<cnt;i++)sets.push({kg:'',reps:'',rir:'',warmup:false});
+      return{name:n,scheme:sc,sets,fromPlan:true,muscleGroup:(typeof e==='object'&&e.muscleGroup)||getMuscleGroup(n)||''};});
   }
   logData[dk].planDay=logPlanDay;saveLog();
   renderExercises(dk);bindSetInputs();
@@ -250,28 +360,86 @@ function renderLog(){
   if(b){b.style.display=saved==='1'?'block':'none';}
   if(a){a.style.transform=saved==='1'?'rotate(180deg)':'';}
 }
-function applyPlanDayToLog(dk,key){
+// Übungsliste einer Einheit. Bei Programm-Einheiten kommen Übungen, Sätze und
+// Schema aus der Phase des Trainingsdatums, nicht aus dem customPlan-Eintrag.
+function _planDaySource(key,dk=getDateKey(logDateOffset)){
+  const opt=key!=='__free'?getPlanDayOptions().find(o=>o.key===key):null;
+  if(!opt)return null;
+  const cm=typeof key==='string'?key.match(/^c(\d+)$/):null;
+  const entry=cm&&customPlan?customPlan[parseInt(cm[1],10)]:null;
+  if(entry&&entry.programKey&&typeof getProgramExercises==='function'){
+    const progEx=getProgramExercises(entry.programKey,getProgramWeek(dk));
+    if(progEx)return{key:opt.key,label:opt.label,exercises:progEx};
+  }
+  return opt;
+}
+function applyPlanDayToLog(dk,key,keepAll){
   flushInputs(dk);
   const hasData=ex=>ex.sets?.some(s=>parseFloat(s.kg)>0||parseInt(s.reps)>0);
-  const toKeep=(logData[dk].exercises||[]).filter(hasData);
+  const opt=_planDaySource(key,dk);
+  const newNames=new Set((opt?opt.exercises:[]).map(e=>typeof e==='string'?e:e.name));
+  const toKeep=(logData[dk].exercises||[]).filter(ex=>{
+    if(!hasData(ex))return false; // ohne Daten -> wie bisher verwerfen
+    if(keepAll||ex.fromPlan!==true)return true; // manuell hinzugefügt -> immer behalten
+    return newNames.has(ex.name); // aus altem Plan -> nur behalten, wenn Teil der neuen Einheit
+  });
   const keptNames=new Set(toKeep.map(e=>e.name));
   let planEx=[];
-  if(key!=='__free'){
-    const opt=getPlanDayOptions().find(o=>o.key===key);
-    if(opt)planEx=opt.exercises
-      .filter(e=>!keptNames.has(typeof e==='string'?e:e.name))
-      .map(e=>{const n=typeof e==='string'?e:e.name;const sc=typeof e==='object'?e.scheme||'':'';
-               return{name:n,scheme:sc,sets:[{kg:'',reps:''}],fromPlan:true,muscleGroup:getMuscleGroup(n)||''};});
-  }
+  if(opt)planEx=opt.exercises
+    .filter(e=>!keptNames.has(typeof e==='string'?e:e.name))
+    .map(e=>{const n=typeof e==='string'?e:e.name;const sc=typeof e==='object'?e.scheme||'':'';
+             // Programm-Übungen bringen ihre Satzzahl mit; sonst ein leerer Satz.
+             const cnt=(typeof e==='object'&&e.sets>0)?e.sets:1;
+             const sets=[];for(let i=0;i<cnt;i++)sets.push({kg:'',reps:'',rir:'',warmup:false});
+             return{name:n,scheme:sc,sets,fromPlan:true,muscleGroup:(typeof e==='object'&&e.muscleGroup)||getMuscleGroup(n)||''};});
   logData[dk].exercises=[...toKeep,...planEx];
   logData[dk].planDay=key;
   saveLog();
 }
+// Namen der fromPlan-Übungen mit eingetragenen Werten, die beim Wechsel zu
+// newKey verworfen würden (siehe applyPlanDayToLog). Rein lesend.
+function _planDayConflicts(dk,newKey){
+  flushInputs(dk);
+  const hasData=ex=>ex.sets?.some(s=>parseFloat(s.kg)>0||parseInt(s.reps)>0);
+  const opt=_planDaySource(newKey,dk);
+  const newNames=new Set((opt?opt.exercises:[]).map(e=>typeof e==='string'?e:e.name));
+  return((logData[dk]&&logData[dk].exercises)||[])
+    .filter(ex=>ex.fromPlan===true&&hasData(ex)&&!newNames.has(ex.name))
+    .map(ex=>ex.name);
+}
 function changeLogPlanDay(){
-  const dk=getDateKey(logDateOffset);const newKey=document.getElementById('log-day-select').value;
+  const dk=getDateKey(logDateOffset);const raw=document.getElementById('log-day-select').value;
+  const newKey=raw===''?null:raw;
   logPlanDay=newKey;
-  applyPlanDayToLog(dk,newKey);
-  renderExercises(dk);bindSetInputs();
+  // Die Auswahl gilt ausschließlich für das aktuell gewählte Datum.
+  const finish=()=>{
+    renderExercises(dk);bindSetInputs();
+    const unitLbl=document.getElementById('log-unit-name');
+    if(unitLbl){const o=getPlanDayOptions().find(x=>x.key===logPlanDay);unitLbl.textContent=o?o.label:logPlanDay==='__free'?'Freies Training':'Keine Einheit gewählt';}
+    const picker=document.getElementById('log-unit-picker');
+    if(picker)picker.style.display='none';
+    renderVolumeTracker();
+    renderCustomWeekGrid(); // Wochenraster zieht sofort mit
+    _renderSelectedWorkout(logPlanDay,undefined,false);
+  };
+  if(newKey===null){
+    logData[dk].planDay=null;saveLog();
+    finish();
+    return;
+  }
+  const conflicts=_planDayConflicts(dk,newKey);
+  if(!conflicts.length){
+    applyPlanDayToLog(dk,newKey);
+    finish();
+    return;
+  }
+  const newLabel=(getPlanDayOptions().find(o=>o.key===newKey)||{}).label||newKey;
+  showModal(
+    'Einheit wechseln?',
+    `${conflicts.length} Übung(en) mit eingetragenen Werten gehören nicht zu <strong>${newLabel}</strong>: ${conflicts.join(', ')}. Sollen sie verworfen werden?`,
+    ()=>{applyPlanDayToLog(dk,newKey);finish();},          // Verwerfen und wechseln
+    ()=>{applyPlanDayToLog(dk,newKey,true);finish();}      // Behalten und trotzdem wechseln
+  );
 }
 function getLastLoggedValue(name){
   for(let i=1;i<=30;i++){
@@ -374,6 +542,25 @@ function renderExercises(dk){
       ?`<div class="ghost-hint">Zuletzt: <span>${_last.kg?_last.kg+'kg':''}${_last.kg&&_last.reps?' × ':''}${_last.reps?_last.reps+' Wdh.':''}</span></div>`
       :'';
 
+    // ── WARM-UP GENERATOR: 40/60/80% vom besten bekannten Gewicht ────────
+    const refKg=Math.max(
+      0,
+      ...ex.sets.map(s=>parseFloat(s.kg)||0),
+      prData[vKey]||0,
+      prData[ex.name]||0
+    );
+    const round25=kg=>Math.round(kg/2.5)*2.5;
+    const warmupHtml=refKg>=10
+      ?`<div class="warmup-banner">
+          <span class="warmup-label">AUFWÄRMEN · ${refKg}kg</span>
+          <div class="warmup-sets">
+            <span>${round25(refKg*.4)}kg × 8</span>
+            <span>${round25(refKg*.6)}kg × 5</span>
+            <span>${round25(refKg*.8)}kg × 3</span>
+          </div>
+        </div>`
+      :'';
+
     div.innerHTML=`
       <div class="log-ex-header" style="cursor:pointer;" onclick="_toggleHistory('${eSafe}')">
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
@@ -389,6 +576,7 @@ function renderExercises(dk){
           <button class="del-btn" onclick="event.stopPropagation();_pendingDelete='${eSafe}';renderExercises('${dk}');bindSetInputs();">✕</button>
         </div>
       </div>
+      ${warmupHtml}
       <div style="margin:6px 0 2px;">
         <span style="font-size:11px;font-family:'DM Mono',monospace;color:var(--muted);">PR: <span style="color:var(--accent);">${pr>0?pr+'kg':'—'}</span> · 1RM≈<span style="color:var(--info);">${oneRM}${oneRM!=='—'?'kg':''}</span></span>
       </div>
@@ -396,8 +584,8 @@ function renderExercises(dk){
       <div id="hist-${sid}" style="overflow:hidden;max-height:${histOpen?'500px':'0'};opacity:${histOpen?'1':'0'};transition:max-height .3s ease,opacity .2s ease;">
         ${histTable}
       </div>
-      <div style="display:grid;grid-template-columns:26px 1fr 1fr 72px 24px;gap:6px;margin:10px 0 6px;">
-        <span class="log-col-label">#</span><span class="log-col-label">kg</span><span class="log-col-label">Reps</span><span class="log-col-label">Volumen</span><span></span>
+      <div style="display:grid;grid-template-columns:${LOG_GRID_COLS};gap:5px;margin:10px 0 6px;">
+        <span class="log-col-label">#</span><span class="log-col-label">kg</span><span class="log-col-label">Reps</span><span class="log-col-label">RIR</span><span class="log-col-label">Volumen</span><span></span>
       </div>
       ${ghostHtml}
       <div>${ex.sets.map((set,si)=>renderSetRow(dk,ei,si,set)).join('')}</div>
@@ -406,12 +594,16 @@ function renderExercises(dk){
   });
 }
 function renderSetRow(dk,ei,si,set){
-  const kg=set.kg||'',reps=set.reps||'';
-  const vol=kg&&reps?Math.round(parseFloat(kg)*parseInt(reps))+'kg':'—';
-  return`<div style="display:grid;grid-template-columns:26px 1fr 1fr 72px 24px;gap:6px;align-items:center;margin-bottom:7px;">
-    <span class="log-set-num">${si+1}</span>
+  const kg=set.kg||'',reps=set.reps||'',rir=set.rir??'';
+  const tonnage=getSetTonnage(set);
+  const vol=tonnage>0?Math.round(tonnage)+'kg':'—';
+  return`<div style="display:grid;grid-template-columns:${LOG_GRID_COLS};gap:5px;align-items:center;margin-bottom:7px;">
+    <span class="log-set-num" style="display:flex;align-items:center;gap:2px;">
+      <button type="button" aria-label="Aufwärmsatz" aria-pressed="${set.warmup===true}" onclick="toggleWarmup('${dk}',${ei},${si})" style="background:none;border:0;padding:0;font:inherit;font-size:10px;color:${set.warmup===true?'var(--accent)':'var(--muted)'};cursor:pointer;">W</button>${si+1}
+    </span>
     <input class="log-input set-input" type="number" inputmode="decimal" placeholder="kg" value="${kg}" data-dk="${dk}" data-ei="${ei}" data-si="${si}" data-field="kg" min="0" step="0.5">
     <input class="log-input set-input" type="number" inputmode="numeric" placeholder="reps" value="${reps}" data-dk="${dk}" data-ei="${ei}" data-si="${si}" data-field="reps" min="0">
+    <input class="log-input set-input" type="number" inputmode="numeric" placeholder="—" value="${rir}" data-dk="${dk}" data-ei="${ei}" data-si="${si}" data-field="rir" min="0" max="5" step="1">
     <span class="log-input" style="cursor:default;color:var(--accent);font-size:11px;">${vol}</span>
     <button class="del-btn" onclick="removeSet('${dk}',${ei},${si})">−</button>
   </div>`;
@@ -429,6 +621,14 @@ function commitSet(dk,ei,si,field,v){
   if(maxKg>0&&maxKg>(prData[vKey]||0))prData[vKey]=maxKg;
   saveLog();renderExercises(dk);bindSetInputs();renderWeekSummary();renderLogFeedback(dk);renderStrengthHistory();renderWeekFeedback();renderVolumeTracker();
 }
+function toggleWarmup(dk,ei,si){
+  const set=logData[dk]?.exercises?.[ei]?.sets?.[si];
+  if(!set)return;
+  flushInputs(dk);
+  set.warmup=!(set.warmup===true);
+  saveLog();renderExercises(dk);bindSetInputs();
+  renderWeekSummary();renderLogFeedback(dk);renderWeekFeedback();renderVolumeTracker();
+}
 function flushInputs(dk){
   document.querySelectorAll(`.set-input[data-dk="${dk}"]`).forEach(inp=>{
     const ei=+inp.dataset.ei,si=+inp.dataset.si,f=inp.dataset.field;
@@ -436,83 +636,19 @@ function flushInputs(dk){
       logData[dk].exercises[ei].sets[si][f]=inp.value;
   });
 }
-function addSet(dk,ei){flushInputs(dk);logData[dk].exercises[ei].sets.push({kg:'',reps:''});saveLog();renderExercises(dk);bindSetInputs();}
+function addSet(dk,ei){flushInputs(dk);logData[dk].exercises[ei].sets.push({kg:'',reps:'',rir:'',warmup:false});saveLog();renderExercises(dk);bindSetInputs();}
 function removeSet(dk,ei,si){flushInputs(dk);if(logData[dk].exercises[ei].sets.length>1){logData[dk].exercises[ei].sets.splice(si,1);saveLog();renderExercises(dk);bindSetInputs();}}
 function removeExercise(dk,ei){flushInputs(dk);_pendingDelete=null;logData[dk].exercises.splice(ei,1);saveLog();renderExercises(dk);bindSetInputs();renderWeekSummary();}
 function addExercise(){
   const dk=getDateKey(logDateOffset);if(!logData[dk])logData[dk]={exercises:[],planDay:logPlanDay};
   const name=prompt('Übungsname:','');
-  if(name&&name.trim()){const n=name.trim();logData[dk].exercises.push({name:n,sets:[{kg:'',reps:''}],fromPlan:false,muscleGroup:getMuscleGroup(n)||''});saveLog();renderExercises(dk);bindSetInputs();}
-}
-
-// ════════════════════════════════════════════
-// MUSKELGRUPPEN & WOCHENBILANZ
-// ════════════════════════════════════════════
-function renderMuscleGroupStats(){
-  const el=document.getElementById('muscle-group-stats');if(!el)return;
-  const muscleMap={
-    'Bankdrücken':      {group:'Brust',color:'#5B7FFF'},
-    'Schrägbank KH':    {group:'Brust',color:'#5B7FFF'},
-    'Cable Flyes':      {group:'Brust',color:'#5B7FFF'},
-    'Dips (Gewichtet)': {group:'Brust/Trizeps',color:'#5B7FFF'},
-    'Trizeps PD':       {group:'Trizeps',color:'#7C5FFF'},
-    'Klimmzüge':        {group:'Rücken',color:'#00E5A0'},
-    'Kabelrudern':      {group:'Rücken',color:'#00E5A0'},
-    'Lat Pulldown':     {group:'Rücken',color:'#00E5A0'},
-    'Face Pulls':       {group:'Schultern',color:'#FFAD33'},
-    'Bizeps Curl':      {group:'Bizeps',color:'#38C4F5'},
-    'Schulterdrücken':  {group:'Schultern',color:'#FFAD33'},
-    'Seitheben':        {group:'Schultern',color:'#FFAD33'},
-    'Arnold Press':     {group:'Schultern',color:'#FFAD33'},
-    'Kniebeuge':        {group:'Quadrizeps',color:'#EC4899'},
-    'Leg Press':        {group:'Quadrizeps',color:'#EC4899'},
-    'Romanian DL':      {group:'Hamstrings',color:'#FF5757'},
-    'Leg Curl':         {group:'Hamstrings',color:'#FF5757'},
-    'Waden':            {group:'Waden',color:'#FF8C57'},
-    'Plank':            {group:'Core',color:'#667085'},
-  };
-  const groups={};
-  for(let i=-6;i<=0;i++){
-    const dk=getDateKey(i),d=logData[dk];if(!d)continue;
-    d.exercises.forEach(ex=>{
-      const info=muscleMap[ex.name];
-      const gName=info?info.group:ex.name;
-      const gColor=info?info.color:'var(--muted)';
-      if(!groups[gName])groups[gName]={sets:0,volume:0,color:gColor};
-      const validSets=ex.sets.filter(s=>parseFloat(s.kg)>0&&parseInt(s.reps)>0);
-      groups[gName].sets+=validSets.length;
-      validSets.forEach(s=>{groups[gName].volume+=(parseFloat(s.kg)||0)*(parseInt(s.reps)||0);});
-    });
+  if(name&&name.trim()){
+    const n=name.trim();const mg=getMuscleGroup(n)||'';
+    logData[dk].exercises.push({name:n,sets:[{kg:'',reps:'',rir:'',warmup:false}],fromPlan:false,muscleGroup:mg});
+    saveLog();renderExercises(dk);bindSetInputs();
+    // Muskelgruppe unbekannt → direkt beim Anlegen abfragen
+    if(!mg)pickMuscleGroup(dk,logData[dk].exercises.length-1);
   }
-  const entries=Object.entries(groups).filter(([,g])=>g.sets>0).sort((a,b)=>b[1].volume-a[1].volume);
-  if(!entries.length){el.innerHTML='<p class="hint-text-sm">Noch keine Daten. Kraftwerte im Log eintragen.</p>';return;}
-  const maxVol=Math.max(...entries.map(([,g])=>g.volume));
-  el.innerHTML=`
-    <table style="width:100%;border-collapse:collapse;font-size:12px;">
-      <thead><tr>
-        <td class="th-mono" style="padding:0 0 10px;width:35%;">MUSKELGRUPPE</td>
-        <td class="th-mono" style="padding:0 0 10px;text-align:center;width:15%;">SÄTZE</td>
-        <td class="th-mono" style="padding:0 0 10px;text-align:right;width:20%;">VOLUMEN</td>
-        <td class="th-mono" style="padding:0 0 10px;padding-left:10px;width:30%;">AUSLASTUNG</td>
-      </tr></thead>
-      <tbody>${entries.map(([name,g])=>{
-        const volTons=(g.volume/1000).toFixed(2)+'t';
-        const volKg=g.volume>=1000?volTons:Math.round(g.volume)+'kg';
-        const pct=Math.round(g.volume/maxVol*100);
-        const setsStatus=g.sets<10?'<span style="color:var(--warn);font-size:9px;">↑ mehr</span>':g.sets<=20?'<span style="color:var(--accent);font-size:9px;">✓ ok</span>':'<span style="color:var(--info);font-size:9px;">⚡ viel</span>';
-        return`<tr style="border-top:1px solid var(--border);">
-          <td style="padding:9px 0;color:${g.color};font-weight:500;">${name}</td>
-          <td style="padding:9px 0;text-align:center;font-family:'DM Mono',monospace;">${g.sets} ${setsStatus}</td>
-          <td style="padding:9px 0;text-align:right;font-family:'DM Mono',monospace;color:var(--text2);">${volKg}</td>
-          <td style="padding:9px 0;padding-left:10px;">
-            <div style="height:5px;background:var(--border);border-radius:3px;overflow:hidden;">
-              <div style="width:${pct}%;height:100%;background:${g.color};border-radius:3px;"></div>
-            </div>
-          </td>
-        </tr>`;
-      }).join('')}</tbody>
-    </table>
-    <p style="font-size:10px;color:var(--muted);margin-top:8px;font-family:'DM Mono',monospace;">Hypertrophie-Ziel: 10–20 Sätze/Woche pro Gruppe</p>`;
 }
 
 // ════════════════════════════════════════════
@@ -522,10 +658,10 @@ function getLastSession(name){
   for(let i=1;i<=60;i++){
     const dk=getDateKey(-i),day=logData[dk];if(!day)continue;
     const ex=day.exercises?.find(e=>e.name===name);if(!ex)continue;
-    const valid=ex.sets.filter(s=>parseFloat(s.kg)>0&&parseInt(s.reps)>0);
+    const valid=(ex.sets||[]).filter(isWorkSet);
     if(!valid.length)continue;
     const best=valid.reduce((b,s)=>parseFloat(s.kg)>(parseFloat(b.kg)||0)?s:b,valid[0]);
-    return{maxKg:parseFloat(best.kg),bestReps:parseInt(best.reps),date:dk};
+    return{maxKg:parseFloat(best.kg)||0,bestReps:parseInt(best.reps),date:dk};
   }
   return null;
 }
@@ -549,53 +685,95 @@ const VOLUME_TARGETS={
   'Bizeps':8,'Trizeps':8,'Core':6,
   'Quadrizeps':10,'Hamstrings':8,'Gesäß':12,'Waden':6
 };
-function getWeeklyVolume(){
+// Log-Datum bestimmt sowohl Zeitraum als auch Ziele; ohne Programm bleibt
+// die bisherige rollierende Sieben-Tage-Ansicht für heute bestehen.
+function _getVolumePeriod(){
+  const dk=getDateKey(logDateOffset);
+  const range=typeof getProgramWeekRange==='function'?getProgramWeekRange(dk):null;
+  if(range)return{...range,phase:getProgramPhase(range.week)};
+  return{week:null,start:getDateKey(-6),end:getDateKey(0),phase:null};
+}
+function getWeeklyVolume(secondary=false,period=_getVolumePeriod()){
   const vol={};
-  for(let i=-6;i<=0;i++){
-    const dk=getDateKey(i),d=logData[dk];if(!d)continue;
-    d.exercises.forEach(ex=>{
-      const mg=ex.muscleGroup||(typeof getMuscleGroup==='function'?getMuscleGroup(ex.name):'')||'';
+  for(const dk of Object.keys(logData)){
+    if(dk<period.start||dk>period.end)continue;
+    const d=logData[dk];if(!d)continue;
+    const cm=typeof d.planDay==='string'?d.planDay.match(/^c(\d+)$/):null;
+    const entry=cm&&Array.isArray(customPlan)?customPlan[Number(cm[1])]:null;
+    const unit=period.week&&entry?.programKey&&typeof programData!=='undefined'&&Array.isArray(programData?.units)
+      ?programData.units.find(u=>u&&u.key===entry.programKey):null;
+    (d.exercises||[]).forEach(ex=>{
+      const mg=ex.muscleGroup||getMuscleGroup(ex.name);
       if(!mg)return;
-      const count=ex.sets.filter(s=>parseFloat(s.kg)>0&&parseInt(s.reps)>0).length;
-      if(count>0)vol[mg]=(vol[mg]||0)+count;
+      const count=(ex.sets||[]).filter(isWorkSet).length;
+      if(!count)return;
+      if(!secondary){vol[mg]=(vol[mg]||0)+count;return;}
+      const source=Array.isArray(unit?.ex)?unit.ex.find(e=>e&&e.name===ex.name):null;
+      const groups=Array.isArray(source?.secondary)?source.secondary:[];
+      new Set(groups).forEach(group=>{
+        if(typeof group==='string'&&group&&group!==mg)vol[group]=(vol[group]||0)+count;
+      });
     });
   }
   return vol;
 }
 function renderVolumeTracker(){
   const el=document.getElementById('volume-tracker');if(!el)return;
-  const vol=getWeeklyVolume();
-  const entries=Object.entries(vol).sort((a,b)=>b[1]-a[1]);
-  if(!entries.length){el.innerHTML='';return;}
+  const period=_getVolumePeriod();
+  const vol=getWeeklyVolume(false,period),secondary=getWeeklyVolume(true,period);
+  const phase=period.phase;
+  const targets=phase&&phase.volumeTargets;
+  const formatDate=dk=>new Date(dk+'T12:00:00').toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit',year:'numeric'});
+  const periodLabel=(period.week?'Programmwoche '+period.week:'Letzte 7 Tage')+' · '+formatDate(period.start)+'–'+formatDate(period.end);
+  const groups=new Set([...Object.keys(targets||{}),...Object.keys(vol),...Object.keys(secondary)]);
+  const entries=[...groups].map(g=>[g,vol[g]||0]);
+  if(!phase)entries.sort((a,b)=>b[1]-a[1]);
+  const maxSets=Math.max(1,...Object.values(vol));
   const rows=entries.map(([group,count])=>{
-    const target=VOLUME_TARGETS[group]||10;
-    const pct=Math.min(100,Math.round(count/target*100));
-    const color=count>=target?'var(--accent)':count>=target*0.5?'var(--warn)':'var(--danger)';
-    return'<div>'
-      +'<div style="display:flex;justify-content:space-between;margin-bottom:6px;">'
-        +'<span style="font-size:11px;">'+group+'</span>'
-        +'<span style="font-family:\'DM Mono\',monospace;font-size:10px;color:'+color+';">'+count+' / '+target+' Sätze</span>'
-      +'</div>'
-      +'<div style="height:3px;background:var(--border);border-radius:2px;margin-bottom:10px;">'
-        +'<div style="width:'+pct+'%;height:3px;background:'+color+';border-radius:2px;transition:width .4s ease;"></div>'
-      +'</div>'
-    +'</div>';
+    const target=targets&&targets[group];
+    const hasTarget=typeof target==='number'&&Number.isFinite(target)&&target>=0;
+    const pct=hasTarget&&target===0?0:Math.min(100,Math.round(count/(hasTarget?target:maxSets)*100));
+    const color=hasTarget
+      ?count>=target?'var(--accent)':count>=target*0.5?'var(--warn)':'var(--danger)'
+      :'var(--muted)';
+    return`<div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:6px;gap:4px;flex-wrap:wrap;">
+        <span style="font-size:11px;">${group}</span>
+        <span style="font-family:'DM Mono',monospace;font-size:10px;color:${color};">${count}${hasTarget?' / '+target+' Sätze':phase?' direkt':' Sätze'}${secondary[group]?` <small style="font-size:9px;color:var(--muted);">+${secondary[group]} sekundär</small>`:''}</span>
+      </div>
+      ${!phase||hasTarget?`<div style="height:3px;background:var(--border);border-radius:2px;margin-bottom:10px;">
+        <div style="width:${pct}%;height:3px;background:${color};border-radius:2px;transition:width .4s ease;"></div>
+      </div>`:''}
+    </div>`;
   }).join('');
+  const phaseLine=phase&&(phase.label||phase.task)
+    ?'<div style="font-size:11px;color:var(--muted);margin-top:10px;padding-top:10px;border-top:1px solid var(--border);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'
+      +[phase.label,phase.task].filter(Boolean).join(' · ')
+      +'</div>'
+    :'';
+  const note=phase&&typeof programData.volumeNote==='string'?programData.volumeNote.trim():'';
   el.innerHTML='<div style="background:var(--surface);border-radius:12px;padding:16px;">'
     +'<div style="font-size:10px;color:var(--muted);font-family:\'DM Mono\',monospace;letter-spacing:.07em;margin-bottom:12px;">WOCHENVOLUMEN</div>'
+    +'<div data-volume-period style="font-size:11px;color:var(--text2);margin-bottom:12px;">'+periodLabel+'</div>'
     +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:0 16px;">'+rows+'</div>'
+    +(phase?'':'<p class="hint-text-sm">Orientierung: ab etwa 10 Sätzen/Woche</p>')
+    +phaseLine
+    +(note?'<div data-volume-note style="font-size:11px;color:var(--muted);margin-top:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></div>':'')
     +'</div>';
+  if(note)el.querySelector('[data-volume-note]').textContent=note;
 }
 
 function renderWeekSummary(){
   let sessions=0,volume=0,totalSets=0,prs=0;const prSet=new Set();
   for(let i=-6;i<=0;i++){
     const dk=getDateKey(i),d=logData[dk];if(!d)continue;
-    if(d.exercises.some(ex=>ex.sets.some(s=>s.kg&&s.reps)))sessions++;
-    d.exercises.forEach(ex=>{
-      ex.sets.forEach(s=>{
-        const kg=parseFloat(s.kg)||0,reps=parseInt(s.reps)||0;
-        if(kg>0&&reps>0){volume+=kg*reps;totalSets++;}
+    if((d.exercises||[]).some(ex=>(ex.sets||[]).some(isWorkSet)))sessions++;
+    (d.exercises||[]).forEach(ex=>{
+      // Volumen nur für gemappte Übungen — unmapped wird ignoriert
+      const mapped=!!(ex.muscleGroup||getMuscleGroup(ex.name));
+      if(mapped)(ex.sets||[]).forEach(s=>{
+        volume+=getSetTonnage(s);
+        if(isWorkSet(s))totalSets++;
       });
       const maxKg=Math.max(0,...ex.sets.map(s=>parseFloat(s.kg)||0));
       if(maxKg>0&&maxKg===(prData[ex.name]||0)&&!prSet.has(ex.name)){prSet.add(ex.name);prs++;}
@@ -617,7 +795,6 @@ function renderWeekSummary(){
       <span style="min-width:60px;text-align:right;font-size:11px;font-family:'DM Mono',monospace;color:${pr>0?'var(--accent)':'var(--muted)'};">${pr>0?pr+' kg':'—'}</span>
     </div>`;
   }).join('');
-  renderMuscleGroupStats();
 }
 
 function renderStrengthHistory(){
@@ -663,14 +840,15 @@ function renderStrengthHistory(){
 function renderLogFeedback(dk){
   const el=document.getElementById('log-ai-feedback');if(!el)return;
   const d=logData[dk];
-  if(!d||!d.exercises.some(ex=>ex.sets.some(s=>s.kg&&s.reps))){el.textContent='Trage Werte ein für Analyse...';return;}
-  const totalVol=d.exercises.reduce((sum,ex)=>sum+ex.sets.reduce((s2,set)=>s2+(parseFloat(set.kg)||0)*(parseInt(set.reps)||0),0),0);
+  if(!d||!(d.exercises||[]).some(ex=>(ex.sets||[]).some(isWorkSet))){el.textContent='Trage Werte ein für Analyse...';return;}
+  const totalVol=(d.exercises||[]).reduce((sum,ex)=>sum+(ex.sets||[]).reduce((s2,set)=>s2+getSetTonnage(set),0),0);
   const msgs=[];
   const newPRexes=d.exercises.filter(ex=>{const maxKg=Math.max(0,...ex.sets.map(s=>parseFloat(s.kg)||0));return maxKg>0&&maxKg===(prData[ex.name]||0);});
   if(newPRexes.length>0)msgs.push(`<strong>🏆 PR: ${newPRexes.map(e=>e.name).join(', ')}!</strong>`);
   if(totalVol>0)msgs.push(`Gesamtvolumen: <strong style="color:var(--accent);">${Math.round(totalVol).toLocaleString('de-DE')} kg</strong>.`);
   const sugg=d.exercises.map(ex=>{
-    const maxKg=Math.max(0,...ex.sets.map(s=>parseFloat(s.kg)||0));const maxReps=Math.max(0,...ex.sets.map(s=>parseInt(s.reps)||0));
+    const workSets=(ex.sets||[]).filter(isWorkSet);
+    const maxKg=Math.max(0,...workSets.map(s=>parseFloat(s.kg)||0));const maxReps=Math.max(0,...workSets.map(s=>parseInt(s.reps)||0));
     if(!maxKg)return null;
     if(maxReps>=10)return`<strong>${ex.name}:</strong> 10er-Marke ✓ → nächste Session +2,5 kg.`;
     if(maxReps>=8)return`<strong>${ex.name}:</strong> Solide → gleiche Last, mehr Reps anstreben.`;
@@ -685,11 +863,11 @@ function renderWeekFeedback(){
   let sessions=0,volume=0,lastWeekVol=0,kcalDays=0,kcalSum=0;
   for(let i=-6;i<=0;i++){
     const dk=getDateKey(i),d=logData[dk];
-    if(d){if(d.exercises.some(ex=>ex.sets.some(s=>s.kg&&s.reps)))sessions++;d.exercises.forEach(ex=>ex.sets.forEach(s=>{volume+=(parseFloat(s.kg)||0)*(parseInt(s.reps)||0);}));}
+    if(d){if((d.exercises||[]).some(ex=>(ex.sets||[]).some(isWorkSet)))sessions++;(d.exercises||[]).forEach(ex=>(ex.sets||[]).forEach(s=>{volume+=getSetTonnage(s);}));}
     const dd=dailyData[dk];
     if(dd&&dd.meals&&dd.meals.length){const dayKcal=getDayKcal(dk);if(dayKcal>0){kcalDays++;kcalSum+=dayKcal;}}
   }
-  for(let i=-13;i<=-7;i++){const d=logData[getDateKey(i)];if(!d)continue;d.exercises.forEach(ex=>ex.sets.forEach(s=>{lastWeekVol+=(parseFloat(s.kg)||0)*(parseInt(s.reps)||0);}));}
+  for(let i=-13;i<=-7;i++){const d=logData[getDateKey(i)];if(!d)continue;(d.exercises||[]).forEach(ex=>(ex.sets||[]).forEach(s=>{lastWeekVol+=getSetTonnage(s);}));}
   const el=document.getElementById('week-feedback');if(!el)return;
   if(sessions===0&&volume===0&&kcalDays===0){el.textContent='Sammle Daten... Trainings und Mahlzeiten eintragen.';return;}
   const msgs=[];
@@ -710,16 +888,20 @@ window.setTrainingMode     =setTrainingMode;
 window.changeLogDate       =changeLogDate;
 window.changeLogPlanDay    =changeLogPlanDay;
 window.addSet              =addSet;
+window.toggleWarmup        =toggleWarmup;
 window.removeSet           =removeSet;
 window.removeExercise      =removeExercise;
 window.addExercise         =addExercise;
 window.showDayDetail       =showDayDetail;
-window.showCustomDayDetail =showCustomDayDetail;
+window.selectLogDate       =selectLogDate;
 window.editCustomDay       =editCustomDay;
 window.addCustomEx         =addCustomEx;
 window.removeCustomEx      =removeCustomEx;
 window.updateCustomEx      =updateCustomEx;
 window.updateCustomDayTitle=updateCustomDayTitle;
+window._toggleUnitPicker   =_toggleUnitPicker;
+window._planDayForDate     =_planDayForDate;
+window._renderSelectedWorkout=_renderSelectedWorkout;
 window.cycleVariant        =cycleVariant;
 window.pickMuscleGroup     =pickMuscleGroup;
 window._toggleHistory      =_toggleHistory;

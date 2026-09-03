@@ -13,6 +13,8 @@
 // INIT
 // ════════════════════════════════════════════
 loadState();
+// nach customPlan (wird in state.js geladen) — Programm hängt daran
+if(typeof loadProgram==='function')loadProgram();
 if(!lsGet('hc_setup_done',null))_showSetupModal();
 
 // Tagesgebundener Watch-Import: bei neuem Tag Lock und Metadaten zurücksetzen
@@ -26,6 +28,8 @@ if(lastHealthImportDate&&lastHealthImportDate!==getTodayKey()){
 // Apply persisted theme on boot
 (function(){const t=lsGet('hc_theme','dark');if(t==='light')document.documentElement.setAttribute('data-theme','light');})();
 
+// Einheit fürs heutige Log aus dem Datum ableiten, bevor irgendetwas rendert
+if(typeof _planDayForDate==='function')logPlanDay=_planDayForDate(getTodayKey());
 updateAll();
 renderLog();
 bindSetInputs();
@@ -35,6 +39,7 @@ applyVitDCollapse();
 renderInjury();
 setHealthEnergyUnit(healthEnergyUnit);
 renderImportStatus();
+if(typeof renderProgramStatus==='function')renderProgramStatus();
 document.addEventListener('DOMContentLoaded',function(){calcNavy();_initSubTabs('profile','profil');});
 
 // ════════════════════════════════════════════

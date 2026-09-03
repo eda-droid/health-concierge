@@ -1,5 +1,5 @@
 // ════════════════════════════════════════════
-// NUTRITION — Mahlzeiten-Tracking, Makros, Wochenbilanz, Vitamin-D-Rechner,
+// NUTRITION — Mahlzeiten-Tracking, Makros, Wochenbilanz, Vitamin-D-Laborwert,
 // Meal-Templates, Wochen-Review, Supplements
 // Öffentlich (onclick): siehe PUBLIC-API-Block am Dateiende
 // ════════════════════════════════════════════
@@ -329,32 +329,7 @@ function autoCalcKcal(){
 // ════════════════════════════════════════════
 // VITAMIN D
 // ════════════════════════════════════════════
-function calcVitDValues(){
-  const skin=parseInt(val('vd-skin'))||2;
-  const sun=parseInt(val('vd-sun'))||30;
-  const season=parseFloat(val('vd-season'))||0.8;
-  const weight=parseFloat(val('p-weight'))||80;
-  const level=parseFloat(val('vd-level'))||0;
-  const skinMult=skin===1?1.5:skin===2?1.0:0.5;
-  const sunIE=Math.min(Math.round(sun*skinMult*season*150),20000);
-  const weightFactor=weight/70;
-  const target=50;
-  const knownLevel=level>0?level:20;
-  const deficit=Math.max(0,target-knownLevel);
-  const neededFromSupp=Math.max(0,Math.round(deficit*100*weightFactor)-sunIE);
-  let suppDose=0;
-  if(neededFromSupp<=0)suppDose=0;
-  else if(neededFromSupp<=1000)suppDose=1000;
-  else if(neededFromSupp<=2500)suppDose=2000;
-  else if(neededFromSupp<=4000)suppDose=3000;
-  else if(neededFromSupp<=6000)suppDose=5000;
-  else suppDose=10000;
-  const estimatedLevel=Math.min(120,Math.round(knownLevel+suppDose/100/weightFactor+sunIE/200));
-  return{sunIE,suppDose,estimatedLevel,knownLevel,levelIsKnown:level>0};
-}
-function calcVitDAndCollapse(){
-  vitdComputed=calcVitDValues();renderVitDResult();
-  renderSupps(Math.round((parseFloat(val('p-weight'))||80)*2.1));
+function saveVitDLevel(){
   vitdOpen=false;applyVitDCollapse();saveAll();
 }
 function toggleVitD(){vitdOpen=!vitdOpen;applyVitDCollapse();saveAll();}
@@ -365,34 +340,16 @@ function applyVitDCollapse(){
   if(!body||!arrow||!inline)return;
   body.style.display=vitdOpen?'block':'none';
   arrow.classList.toggle('open',vitdOpen);
-  if(!vitdOpen&&vitdComputed)inline.textContent=` — ${vitdComputed.suppDose>0?vitdComputed.suppDose.toLocaleString('de-DE')+' IE/Tag':'kein Supplement nötig'}`;
-  else inline.textContent='';
+  const level=parseFloat(val('vd-level'));
+  inline.textContent=!vitdOpen&&Number.isFinite(level)&&level>0?` — ${level} ng/mL`:'';
+  renderVitDResult();
 }
 function renderVitDResult(){
-  if(!vitdComputed)vitdComputed=calcVitDValues();
-  const{sunIE,suppDose,estimatedLevel,knownLevel,levelIsKnown}=vitdComputed;
-  let statusColor,statusBadge,statusText;
-  if(estimatedLevel>=50&&estimatedLevel<=100){statusColor='var(--accent)';statusText='Optimal (50–80 ng/mL)';statusBadge='badge-green';}
-  else if(estimatedLevel>=30){statusColor='var(--warn)';statusText='Ausreichend (30–50 ng/mL)';statusBadge='badge-yellow';}
-  else{statusColor='var(--danger)';statusText='Mangel (<30 ng/mL)';statusBadge='badge-red';}
-  const barPct=Math.min(100,Math.round(estimatedLevel/80*100));
-  const magNote=suppDose>=5000?`<div style="margin-top:10px;font-size:12px;color:var(--warn);line-height:1.6;">⚠ Bei ${suppDose.toLocaleString('de-DE')} IE/Tag Magnesium-Bedarf erhöht → Supplement-Stack auf 500mg angepasst.</div>`:'';
-  const baseNote=levelIsKnown
-    ?`Ausgangswert: <strong>${knownLevel} ng/mL</strong> (aus Blutwert).`
-    :`Ausgangswert: <strong>${knownLevel} ng/mL</strong> angenommen (DE-Durchschnitt ohne Supp). Blutwert eingeben für präzise Berechnung.`;
-  document.getElementById('vitd-result').innerHTML=`
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px;">
-      <div class="summary-card"><div class="summary-val" style="font-size:17px;color:var(--warn);">${sunIE.toLocaleString('de-DE')}</div><div class="summary-label">IE Sonne/Tag</div></div>
-      <div class="summary-card"><div class="summary-val" style="font-size:17px;color:var(--accent);">${suppDose.toLocaleString('de-DE')}</div><div class="summary-label">IE Supplement/Tag</div></div>
-      <div class="summary-card"><div class="summary-val" style="font-size:17px;color:${statusColor};">${estimatedLevel}</div><div class="summary-label">ng/mL (Ziel: 50+)</div></div>
-    </div>
-    <div style="margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;font-size:12px;">
-      <span style="color:var(--muted);">Geschätzter Spiegel mit Supplement</span><span class="badge ${statusBadge}">${statusText}</span>
-    </div>
-    <div class="vitd-result-bar"><div class="vitd-result-fill" style="width:${barPct}%;background:${statusColor};"></div></div>
-    <div class="vitd-markers"><span>0</span><span style="color:var(--danger);">20</span><span style="color:var(--warn);">30</span><span style="color:var(--accent);">50</span><span>80+</span></div>
-    <p style="font-size:11px;color:var(--muted);margin-top:10px;line-height:1.65;">${baseNote}<br>Grobe Orientierung — kein Ersatz für Blutbild. Bei Dosen über 4.000 IE täglich Arzt konsultieren.</p>
-    ${magNote}`;
+  const el=document.getElementById('vitd-result');if(!el)return;
+  const level=parseFloat(val('vd-level'));
+  el.textContent=Number.isFinite(level)&&level>0
+    ?`Eingetragener Laborwert: ${level} ng/mL`
+    :'Kein Laborwert eingetragen.';
 }
 // ════════════════════════════════════════════
 // MEAL TEMPLATES
@@ -728,20 +685,40 @@ function renderWeeklyReview(){
     +metricsHtml+interpHtml+actionsHtml+missingHtml;
 }
 
+function addSupplement(){
+  const name=val('supp-name');
+  if(!name.trim())return;
+  const day=getDay(getTodayKey());
+  if(!day.supplements)day.supplements=[];
+  day.supplements.push({name,dose:val('supp-dose'),unit:val('supp-unit'),time:val('supp-time'),taken:false});
+  saveDaily();
+  ['supp-name','supp-dose','supp-unit','supp-time'].forEach(id=>{document.getElementById(id).value='';});
+  renderSupps();
+}
+function setSupplementTaken(dk,index,taken){
+  const entry=dailyData[dk]?.supplements?.[index];if(!entry)return;
+  entry.taken=taken===true;
+  saveDaily();renderSupps();
+}
 function renderSupps(protein){
-  const vitdDose=vitdComputed?vitdComputed.suppDose:0;
-  const magDose=vitdDose>=5000?'500mg abends':'400mg abends';
-  let vitdRow=vitdComputed
-    ?(vitdComputed.suppDose===0
-      ?`<div class="stat-row"><span class="sr-label">Vitamin D₃</span><span class="sr-val" style="color:var(--accent);">0 IE — Sonne reicht</span></div>`
-      :`<div class="stat-row"><span class="sr-label">Vitamin D₃ + K2</span><span class="sr-val" style="color:var(--accent);">${vitdComputed.suppDose.toLocaleString('de-DE')} IE täglich</span></div>`)
-    :`<div class="stat-row"><span class="sr-label">Vitamin D₃</span><span class="sr-val" style="color:var(--muted);">→ Rechner nutzen</span></div>`;
-  document.getElementById('supps').innerHTML=`
-    ${vitdRow}
-    <div class="stat-row"><span class="sr-label">Kreatin Monohydrat</span><span class="sr-val">5g täglich</span></div>
-    <div class="stat-row"><span class="sr-label">Omega-3 (EPA/DHA)</span><span class="sr-val">2–3g täglich</span></div>
-    <div class="stat-row"><span class="sr-label">Magnesium Glycinat</span><span class="sr-val">${magDose}</span></div>
-    <div class="stat-row"><span class="sr-label">Protein Shake</span><span class="sr-val">${Math.round(protein*.25)}g Post-Workout</span></div>`;
+  const el=document.getElementById('supps');if(!el)return;
+  const dk=getTodayKey();
+  const entries=dailyData[dk]?.supplements||[];
+  el.innerHTML='';
+  if(!entries.length){el.innerHTML='<p class="hint-text-sm">Noch keine Einnahmen eingetragen.</p>';return;}
+  entries.forEach((entry,index)=>{
+    const row=document.createElement('div');row.className='stat-row';
+    const text=document.createElement('span');text.className='sr-label';
+    const dose=[entry.dose,entry.unit].filter(v=>v!==undefined&&v!==null&&v!=='').join(' ');
+    text.textContent=[entry.name,dose,entry.time].filter(Boolean).join(' · ');
+    const label=document.createElement('label');label.className='hint-text-sm';
+    const checkbox=document.createElement('input');checkbox.type='checkbox';
+    checkbox.checked=entry.taken===true;
+    checkbox.onchange=()=>setSupplementTaken(dk,index,checkbox.checked);
+    label.appendChild(checkbox);
+    label.appendChild(document.createTextNode(' Genommen'));
+    row.appendChild(text);row.appendChild(label);el.appendChild(row);
+  });
 }
 
 // ════════════════════════════════════════════
@@ -751,7 +728,9 @@ window.addMeal             =addMeal;
 window.removeMeal          =removeMeal;
 window.adjustKcal          =adjustKcal;
 window.toggleVitD          =toggleVitD;
-window.calcVitDAndCollapse =calcVitDAndCollapse;
+window.saveVitDLevel       =saveVitDLevel;
+window.addSupplement      =addSupplement;
+window.setSupplementTaken =setSupplementTaken;
 window.saveMealAsTemplate  =saveMealAsTemplate;
 window.cancelEditTemplate  =cancelEditTemplate;
 window.addTemplateToToday  =addTemplateToToday;
