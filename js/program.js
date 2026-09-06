@@ -7,6 +7,7 @@
 // ════════════════════════════════════════════
 var programData=null;
 var programStart=null;
+var programInstanceId=null;
 
 // ════════════════════════════════════════════
 // VALIDIERUNG — kein Reparieren, kein Defaulten
@@ -21,10 +22,14 @@ function validateProgram(obj){
 
   if(!Array.isArray(obj.units)||!obj.units.length)
     return{ok:false,error:'units muss ein nicht-leeres Array sein.'};
+  const unitKeys=new Set();
   for(let i=0;i<obj.units.length;i++){
     const u=obj.units[i];
     if(!u||typeof u!=='object')return{ok:false,error:'units['+i+'] ist kein Objekt.'};
-    if(!u.key)return{ok:false,error:'units['+i+'] hat kein key.'};
+    if(typeof u.key!=='string'||!u.key.trim()||unitKeys.has(u.key))return{ok:false,error:'Einheiten brauchen eindeutige, nicht-leere Schlüssel.'};
+    unitKeys.add(u.key);
+    if(!Array.isArray(u.ex)||u.ex.some(e=>!e||typeof e.name!=='string'||!e.name.trim()))return{ok:false,error:'Ungültige Übungsliste in '+u.key+'.'};
+    if(new Set(u.ex.map(e=>e.key||e.name)).size!==u.ex.length)return{ok:false,error:'Doppelte Übungen in '+u.key+'.'};
     if(!u.title)return{ok:false,error:'units['+i+'] ('+u.key+') hat kein title.'};
   }
 
@@ -62,8 +67,22 @@ function validateProgram(obj){
 function saveProgram(){
   lsSet('vitale_program',programData);
   lsSet('vitale_program_start',programStart);
+  lsSet('vitale_program_instance',programInstanceId);
 }
 function loadProgram(){
+  const journal=lsGet('vitale_program_transaction',null);
+  if(journal){
+    try{
+      for(const key of ['vitale_program','vitale_program_start','hc_customplan','vitale_program_instance']){
+        if(Object.prototype.hasOwnProperty.call(journal,key)){
+          if(journal[key]===null)localStorage.removeItem(key);else localStorage.setItem(key,journal[key]);
+        }
+      }
+      localStorage.removeItem('vitale_program_transaction');
+      customPlan=lsGet('hc_customplan',null);
+    }catch(error){console.warn('Programm konnte nicht vollständig wiederhergestellt werden.');}
+  }
+  programInstanceId=lsGet('vitale_program_instance',null);
   programData=lsGet('vitale_program',null);
   programStart=lsGet('vitale_program_start',null);
 }
@@ -71,55 +90,76 @@ function loadProgram(){
 // ════════════════════════════════════════════
 // IMPORT
 // ════════════════════════════════════════════
-function importProgram(text){
-  const st=document.getElementById('program-status');
-  const fail=msg=>{if(st)st.innerHTML='<span style="color:var(--danger);">'+msg+'</span>';};
-
-  let parsed;
-  try{parsed=JSON.parse(text);}
-  catch(e){fail('JSON konnte nicht gelesen werden: '+e.message);return;}
-
-  const check=validateProgram(parsed);
-  if(!check.ok){fail('Ungültiges Programm: '+check.error);return;}
-
-  programData=parsed;
-  programStart=getTodayKey();
-
-  // Re-Import: nur Programm-Einträge ersetzen, eigene Einträge bleiben
-  if(!Array.isArray(customPlan))customPlan=[];
-  customPlan=customPlan.filter(d=>!d||!d.programKey);
-  programData.units.forEach(u=>{
-    customPlan.push({
-      title:u.title,
-      programKey:u.key,
-      // scheme bleibt leer — die Satzzahl kommt aus der Phase
-      ex:(Array.isArray(u.ex)?u.ex:[]).map(e=>({
-        name:typeof e==='string'?e:(e.name||''),
-        muscleGroup:(typeof e==='object'&&e.muscleGroup)||'',
-        scheme:''
-      }))
-    });
-  });
-
-  saveCustomPlan();
-  saveProgram();
-  renderCustomWeekGrid();
-  renderLog();
-  renderProgramStatus();
-  if(st)st.innerHTML='<span style="color:var(--accent);">✓ '+programData.units.length+' Einheiten importiert · '+programData.weeks+' Wochen</span>';
+function _programStatus(message,error=false){
+  const el=document.getElementById('program-status');
+  if(el){el.textContent=message;el.style.color=error?'var(--danger)':'var(--accent)';}
 }
-
-function importProgramFile(event){
-  const file=event.target.files[0];if(!file)return;
-  const st=document.getElementById('program-status');
+function _programInstance(){return programInstanceId||(programData&&programStart?programStart+'|'+programData.name:null);}
+function _commitProgram(nextProgram,nextStart,nextPlan,nextInstance){
+  // Ein Journal ermöglicht auch nach einem unterbrochenen Schreibvorgang Rollback.
+  const updates={vitale_program:nextProgram,vitale_program_start:nextStart,hc_customplan:nextPlan,vitale_program_instance:nextInstance};
+  const before={};
+  try{
+    for(const key of Object.keys(updates))before[key]=localStorage.getItem(key);
+    localStorage.setItem('vitale_program_transaction',JSON.stringify(before));
+    for(const [key,value] of Object.entries(updates))localStorage.setItem(key,JSON.stringify(value));
+    localStorage.removeItem('vitale_program_transaction');
+  }catch(error){
+    let restored=true;
+    for(const [key,value] of Object.entries(before)){
+      try{if(value===null)localStorage.removeItem(key);else localStorage.setItem(key,value);}catch(_ignored){restored=false;}
+    }
+    if(restored){try{localStorage.removeItem('vitale_program_transaction');}catch(_ignored){}}
+    _programStatus('Speichern fehlgeschlagen. Der bisherige Plan bleibt aktiv; bitte Speicherplatz prüfen.',true);
+    return false;
+  }
+  programData=nextProgram;programStart=nextStart;customPlan=nextPlan;programInstanceId=nextInstance;
+  return true;
+}
+function importProgram(text,mode='new'){
+  let parsed;
+  try{parsed=JSON.parse(text);}catch(error){_programStatus('JSON konnte nicht gelesen werden: '+error.message,true);return false;}
+  const check=validateProgram(parsed);
+  if(!check.ok){_programStatus('Ungültiges Programm: '+check.error,true);return false;}
+  if(mode==='update'&&(!programData||!programStart)){_programStatus('Kein bestehendes Programm zum Aktualisieren vorhanden.',true);return false;}
+  const updating=mode==='update';
+  const current=Array.isArray(customPlan)?customPlan:[];
+  const previousInstance=_programInstance();
+  const instance=updating?previousInstance:getTodayKey()+'|'+Date.now()+'|'+Math.random().toString(36).slice(2);
+  const start=updating?programStart:getTodayKey();
+  const makeEntry=u=>({title:u.title,programKey:u.key,programInstanceId:instance,ex:u.ex.map(e=>({name:e.name,muscleGroup:e.muscleGroup||'',scheme:''}))});
+  const byKey=new Map(parsed.units.map(u=>[u.key,u]));
+  const used=new Set();
+  // Niemals filtern oder sortieren: c0/c1/... bleiben für vorhandene Logs stabil.
+  const next=current.map(entry=>{
+    if(!entry||!entry.programKey)return entry;
+    const belongs=!entry.programArchived&&(!entry.programInstanceId||entry.programInstanceId===previousInstance);
+    if(updating&&belongs&&byKey.has(entry.programKey)){
+      used.add(entry.programKey);
+      return{...entry,...makeEntry(byKey.get(entry.programKey)),programArchived:false};
+    }
+    return{...entry,programInstanceId:entry.programInstanceId||previousInstance,programArchived:true};
+  });
+  if(updating&&current.some(e=>e?.programKey&&!e.programArchived)&&!used.size){
+    _programStatus('Keine passenden Einheiten gefunden. Für einen anderen Plan bitte „Neues Programm starten“ verwenden.',true);return false;
+  }
+  for(const u of parsed.units)if(!used.has(u.key))next.push(makeEntry(u));
+  if(!_commitProgram(parsed,start,next,instance))return false;
+  renderCustomWeekGrid();renderLog();renderProgramStatus();
+  _programStatus(updating?'✓ Plan aktualisiert. Startdatum und gespeicherte Trainings bleiben erhalten.':'✓ Neues Programm gestartet. Frühere Trainings bleiben erhalten.');
+  return true;
+}
+function importProgramFile(event,mode='new'){
+  const input=event.target,file=input.files[0];if(!file)return;
   const reader=new FileReader();
   reader.onload=e=>{
-    try{importProgram(e.target.result);}
-    catch(err){if(st)st.innerHTML='<span style="color:var(--danger);">Import-Fehler: '+err.message+'</span>';}
+    input.value='';
+    const apply=()=>importProgram(e.target.result,mode);
+    if(mode==='new'&&programData){
+      showModal('Neues Programm starten?','Der neue Plan beginnt heute. Frühere Einheiten und Trainings bleiben im Verlauf erhalten.',apply);
+    }else apply();
   };
-  reader.onerror=()=>{
-    if(st)st.innerHTML='<span style="color:var(--danger);">Datei konnte nicht gelesen werden.</span>';
-  };
+  reader.onerror=()=>{input.value='';_programStatus('Datei konnte nicht gelesen werden.',true);};
   reader.readAsText(file);
 }
 
@@ -176,14 +216,33 @@ function getProgramScheme(unit,ex,week){
   const sets=getProgramSets(unit,ex,week);
   if(!sets)return'';
   const phase=getProgramPhase(week);
-  const reps=ex.reps||(phase&&phase.reps)||'';
+  const reps=ex.reps||(Number.isFinite(ex.repMin)&&Number.isFinite(ex.repMax)?ex.repMin+'–'+ex.repMax:'')||(phase&&phase.reps)||'';
   const rir=(phase&&phase.isoRir&&ex.slot==='iso')?phase.isoRir:(phase&&phase.rir)||'';
   let out=sets+'×'+String(reps).replace(/-/g,'–');
-  if(rir)out+=' · '+String(rir).replace(/-/g,'–')+' RIR';
+  if(rir)out+=' · '+(Array.isArray(rir)?rir.join('–'):String(rir)).replace(/-/g,'–')+' RIR';
   return out;
 }
 // Übungen einer Programm-Einheit, sofern der customPlan-Eintrag ein
 // programKey trägt und das Programm aktiv ist. Sonst null.
+function _programRange(value){
+  if(Array.isArray(value)&&value.length&&value.every(n=>Number.isFinite(Number(n))))return{min:Number(value[0]),max:Number(value[value.length-1])};
+  const match=String(value??'').match(/^(\d+(?:\.\d+)?)(?:\s*[-–,]\s*(\d+(?:\.\d+)?))?/);
+  return match?{min:Number(match[1]),max:Number(match[2]||match[1])}:null;
+}
+function getProgramTarget(unit,ex,week){
+  const phase=getProgramPhase(week);if(!phase||!ex)return null;
+  const reps=Number.isFinite(ex.repMin)&&Number.isFinite(ex.repMax)?{min:ex.repMin,max:ex.repMax}:_programRange(ex.reps||phase.reps);
+  const rirText=(ex.slot==='iso'&&phase.isoRir)?phase.isoRir:phase.rir??ex.rir;
+  const rir=_programRange(rirText);
+  const lastMatch=String(rirText??'').match(/letzter Satz\s*(optional\s*)?(\d+(?:\s*[-–]\s*\d+)?)/i);
+  let lastRir=lastMatch?_programRange(lastMatch[2]):rir;
+  if(lastMatch?.[1]&&rir&&lastRir)lastRir={min:Math.min(rir.min,lastRir.min),max:Math.max(rir.max,lastRir.max)};
+  return{unitKey:unit.key,programInstanceId:_programInstance(),exerciseKey:ex.key||ex.name,
+    sets:getProgramSets(unit,ex,week),repMin:reps?.min??null,repMax:reps?.max??null,
+    rirMin:rir?.min??null,rirMax:rir?.max??null,lastRirMin:lastRir?.min??null,lastRirMax:lastRir?.max??null,
+    step:Number(ex.step)>0?Number(ex.step):null,week};
+}
+
 function getProgramExercises(programKey,week){
   const w=week===undefined?getProgramWeek():week;
   if(!w)return null; // kein/abgelaufenes Programm -> Aufrufer nutzt customPlan
@@ -193,7 +252,8 @@ function getProgramExercises(programKey,week){
     name:e.name||'',
     muscleGroup:e.muscleGroup||'',
     scheme:getProgramScheme(unit,e,w),
-    sets:getProgramSets(unit,e,w)
+    sets:getProgramSets(unit,e,w),
+    planTarget:getProgramTarget(unit,e,w)
   })).filter(e=>e.name&&e.sets>0); // ohne Satzzahl wird übersprungen
 }
 
@@ -207,7 +267,9 @@ function renderProgramStatus(){
   const removeWrap=document.getElementById('program-remove-wrap');
   const active=!!(programData&&programStart);
 
-  if(loadBtn)loadBtn.textContent=active?'Anderes Programm laden':'Programm laden';
+  if(loadBtn)loadBtn.textContent=active?'Neues Programm starten':'Programm laden';
+  const updateBtn=document.getElementById('program-update-btn');
+  if(updateBtn)updateBtn.style.display=active?'block':'none';
   if(removeWrap)removeWrap.innerHTML=active
     ?'<button class="btn-ghost" style="margin-top:10px;width:100%;color:var(--danger);border-color:rgba(255,87,87,0.3);" onclick="removeProgram()">🗑 Programm entfernen</button>'
     :'';
@@ -248,7 +310,7 @@ function removeProgram(){
       lsSet('vitale_program',null);
       lsSet('vitale_program_start',null);
       if(Array.isArray(customPlan)){
-        customPlan=customPlan.filter(d=>!d||!d.programKey);
+        customPlan=customPlan.map(d=>d?.programKey?{...d,programInstanceId:d.programInstanceId||programInstanceId,programArchived:true}:d);
         saveCustomPlan();
       }
       renderCustomWeekGrid();

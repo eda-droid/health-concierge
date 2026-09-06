@@ -166,7 +166,7 @@ function _renderSelectedWorkout(key,_reserved,markGrid=true){
     // Kein Grid-Toggle mehr: das Wochenraster markiert das gewählte Datum,
     // nicht die Einheit — das erledigt renderCustomWeekGrid().
     // Programm-Einheit: Übungen + Schema aus der Phase des gewählten Datums.
-    const progEx=day.programKey&&typeof getProgramExercises==='function'
+    const progEx=!day.programArchived&&day.programKey&&typeof getProgramExercises==='function'
       ?getProgramExercises(day.programKey,getProgramWeek(getDateKey(logDateOffset))):null;
     const exList=progEx||day.ex;
     let rows='';
@@ -308,7 +308,7 @@ function hasLogEntry(dk){
 }
 function getPlanDayOptions(){
   // Bibliothek von Einheiten — Index ist die ID, kein Wochentag.
-  if(trainingMode==='advanced'&&customPlan)return customPlan.map((d,i)=>({key:'c'+i,label:d.title,exercises:d.ex.filter(e=>e.name).map(e=>({name:e.name,scheme:e.scheme||''}))}));
+  if(trainingMode==='advanced'&&customPlan)return customPlan.flatMap((d,i)=>d?[{key:'c'+i,label:d.title+(d.programArchived?' (archiviert)':''),archived:!!d.programArchived,exercises:(d.ex||[]).filter(e=>e.name).map(e=>({name:e.name,scheme:e.scheme||''}))}]:[]);
   const plan=weekPlanState||getWeekPlan(75);const seen={};const opts=[];
   plan.forEach((wt,i)=>{if(wt==='rest')return;const wp=workoutPlans[wt];if(seen[wt])return;seen[wt]=1;opts.push({key:wt,label:wp.label,exercises:wp.ex.map(e=>e[0])});});
   return opts;
@@ -326,32 +326,18 @@ function toggleAnalyseBlock(){
 function renderLog(){
   const dk=getDateKey(logDateOffset);
   document.getElementById('log-date-label').textContent=formatDateLabel(logDateOffset);
-  if(!logData[dk])logData[dk]={exercises:[],planDay:null};
+  const day=logData[dk]||{exercises:[],planDay:null};
   const opts=getPlanDayOptions();
-  const isValidKey=k=>k==='__free'||opts.some(o=>o.key===k);
-  // Nach Moduswechsel kann logPlanDay auf eine Einheit zeigen, die es in den
-  // aktuellen Optionen nicht mehr gibt -> zurücksetzen statt ungültig anzeigen.
-  if(logPlanDay!==null&&!isValidKey(logPlanDay))logPlanDay=null;
-  // Keine Ableitung: ein Datum ohne gespeicherte Einheit bleibt leer.
-  if(logPlanDay===null)logPlanDay=_planDayForDate(dk);
-  if(logPlanDay!==null&&!isValidKey(logPlanDay))logPlanDay=null;
+  logPlanDay=day.planDay||null;
   const unitLbl=document.getElementById('log-unit-name');
   if(unitLbl){
     const opt=opts.find(o=>o.key===logPlanDay);
-    unitLbl.textContent=opt?opt.label:logPlanDay==='__free'?'Freies Training':'Keine Einheit gewählt';
+    unitLbl.textContent=opt?opt.label:logPlanDay==='__free'?'Freies Training':logPlanDay?'Gespeicherte Einheit nicht verfügbar':'Keine Einheit gewählt';
   }
   const sel=document.getElementById('log-day-select');if(!sel)return;
   sel.innerHTML=`<option value="" ${logPlanDay===null?'selected':''}>Einheit wählen…</option>`
-    +opts.map(o=>`<option value="${o.key}" ${o.key===logPlanDay?'selected':''}>${o.label}</option>`).join('')
+    +opts.map(o=>`<option value="${o.key}" ${o.archived?'disabled':''} ${o.key===logPlanDay?'selected':''}>${o.label}</option>`).join('')
     +`<option value="__free" ${logPlanDay==='__free'?'selected':''}>Freies Training</option>`;
-  if(logPlanDay!==null&&logData[dk].exercises.length===0&&logPlanDay!=='__free'){
-    const opt=_planDaySource(logPlanDay,dk);
-    if(opt)logData[dk].exercises=opt.exercises.map(e=>{const n=typeof e==='string'?e:e.name;const sc=typeof e==='object'?e.scheme||'':'';
-      const cnt=(typeof e==='object'&&e.sets>0)?e.sets:1;
-      const sets=[];for(let i=0;i<cnt;i++)sets.push({kg:'',reps:'',rir:'',warmup:false});
-      return{name:n,scheme:sc,sets,fromPlan:true,muscleGroup:(typeof e==='object'&&e.muscleGroup)||getMuscleGroup(n)||''};});
-  }
-  logData[dk].planDay=logPlanDay;saveLog();
   renderExercises(dk);bindSetInputs();
   renderWeekSummary();renderStrengthHistory();renderLogFeedback(dk);renderWeekFeedback();renderVolumeTracker();
   const saved=lsGet('vitale_analyse_open');
@@ -367,13 +353,14 @@ function _planDaySource(key,dk=getDateKey(logDateOffset)){
   if(!opt)return null;
   const cm=typeof key==='string'?key.match(/^c(\d+)$/):null;
   const entry=cm&&customPlan?customPlan[parseInt(cm[1],10)]:null;
-  if(entry&&entry.programKey&&typeof getProgramExercises==='function'){
+  if(entry&&!entry.programArchived&&entry.programKey&&typeof getProgramExercises==='function'){
     const progEx=getProgramExercises(entry.programKey,getProgramWeek(dk));
     if(progEx)return{key:opt.key,label:opt.label,exercises:progEx};
   }
   return opt;
 }
 function applyPlanDayToLog(dk,key,keepAll){
+  if(!logData[dk])logData[dk]={exercises:[],planDay:null};
   flushInputs(dk);
   const hasData=ex=>ex.sets?.some(s=>parseFloat(s.kg)>0||parseInt(s.reps)>0);
   const opt=_planDaySource(key,dk);
@@ -391,7 +378,7 @@ function applyPlanDayToLog(dk,key,keepAll){
              // Programm-Übungen bringen ihre Satzzahl mit; sonst ein leerer Satz.
              const cnt=(typeof e==='object'&&e.sets>0)?e.sets:1;
              const sets=[];for(let i=0;i<cnt;i++)sets.push({kg:'',reps:'',rir:'',warmup:false});
-             return{name:n,scheme:sc,sets,fromPlan:true,muscleGroup:(typeof e==='object'&&e.muscleGroup)||getMuscleGroup(n)||''};});
+             return{name:n,scheme:sc,sets,fromPlan:true,...(e.planTarget?{planTarget:JSON.parse(JSON.stringify(e.planTarget))}:{}),muscleGroup:(typeof e==='object'&&e.muscleGroup)||getMuscleGroup(n)||''};});
   logData[dk].exercises=[...toKeep,...planEx];
   logData[dk].planDay=key;
   saveLog();
@@ -409,13 +396,15 @@ function _planDayConflicts(dk,newKey){
 }
 function changeLogPlanDay(){
   const dk=getDateKey(logDateOffset);const raw=document.getElementById('log-day-select').value;
+  if(!logData[dk])logData[dk]={exercises:[],planDay:null};
   const newKey=raw===''?null:raw;
+  if(getPlanDayOptions().find(o=>o.key===newKey)?.archived)return;
   logPlanDay=newKey;
   // Die Auswahl gilt ausschließlich für das aktuell gewählte Datum.
   const finish=()=>{
     renderExercises(dk);bindSetInputs();
     const unitLbl=document.getElementById('log-unit-name');
-    if(unitLbl){const o=getPlanDayOptions().find(x=>x.key===logPlanDay);unitLbl.textContent=o?o.label:logPlanDay==='__free'?'Freies Training':'Keine Einheit gewählt';}
+    if(unitLbl){const o=getPlanDayOptions().find(x=>x.key===logPlanDay);unitLbl.textContent=o?o.label:logPlanDay==='__free'?'Freies Training':logPlanDay?'Gespeicherte Einheit nicht verfügbar':'Keine Einheit gewählt';}
     const picker=document.getElementById('log-unit-picker');
     if(picker)picker.style.display='none';
     renderVolumeTracker();
@@ -569,7 +558,7 @@ function renderExercises(dk){
           ${variantBtn}
           ${ex.scheme?`<span style="font-size:10px;color:var(--muted);font-family:'DM Mono',monospace;">${ex.scheme}</span>`:''}
           ${isNewPR&&maxKg>0?'<span class="badge badge-yellow">🏆 PR!</span>':''}
-          ${(()=>{const sug=getOverloadSuggestion(ex);return sug?`<span style="font-size:10px;color:var(--info);font-family:'DM Mono',monospace;background:rgba(91,127,255,.08);border:1px solid rgba(91,127,255,.15);border-radius:6px;padding:2px 8px;">${sug}</span>`:''})()}
+          ${(()=>{const sug=getOverloadSuggestion(ex,dk);return sug?`<span style="font-size:10px;color:var(--info);font-family:'DM Mono',monospace;background:rgba(91,127,255,.08);border:1px solid rgba(91,127,255,.15);border-radius:6px;padding:2px 8px;">${sug}</span>`:''})()}
         </div>
         <div style="display:flex;align-items:center;gap:10px;">
           <span id="chev-${sid}" style="font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);user-select:none;">${histOpen?'▲':'▼'}</span>
@@ -636,9 +625,9 @@ function flushInputs(dk){
       logData[dk].exercises[ei].sets[si][f]=inp.value;
   });
 }
-function addSet(dk,ei){flushInputs(dk);logData[dk].exercises[ei].sets.push({kg:'',reps:'',rir:'',warmup:false});saveLog();renderExercises(dk);bindSetInputs();}
-function removeSet(dk,ei,si){flushInputs(dk);if(logData[dk].exercises[ei].sets.length>1){logData[dk].exercises[ei].sets.splice(si,1);saveLog();renderExercises(dk);bindSetInputs();}}
-function removeExercise(dk,ei){flushInputs(dk);_pendingDelete=null;logData[dk].exercises.splice(ei,1);saveLog();renderExercises(dk);bindSetInputs();renderWeekSummary();}
+function addSet(dk,ei){flushInputs(dk);logData[dk].exercises[ei].sets.push({kg:'',reps:'',rir:'',warmup:false});saveLog();renderExercises(dk);bindSetInputs();renderLogFeedback(dk);}
+function removeSet(dk,ei,si){flushInputs(dk);if(logData[dk].exercises[ei].sets.length>1){logData[dk].exercises[ei].sets.splice(si,1);saveLog();renderExercises(dk);bindSetInputs();renderLogFeedback(dk);}}
+function removeExercise(dk,ei){flushInputs(dk);_pendingDelete=null;logData[dk].exercises.splice(ei,1);saveLog();renderExercises(dk);bindSetInputs();renderWeekSummary();renderLogFeedback(dk);}
 function addExercise(){
   const dk=getDateKey(logDateOffset);if(!logData[dk])logData[dk]={exercises:[],planDay:logPlanDay};
   const name=prompt('Übungsname:','');
@@ -654,27 +643,73 @@ function addExercise(){
 // ════════════════════════════════════════════
 // PROGRESSIVE OVERLOAD
 // ════════════════════════════════════════════
-function getLastSession(name){
-  for(let i=1;i<=60;i++){
-    const dk=getDateKey(-i),day=logData[dk];if(!day)continue;
-    const ex=day.exercises?.find(e=>e.name===name);if(!ex)continue;
-    const valid=(ex.sets||[]).filter(isWorkSet);
-    if(!valid.length)continue;
-    const best=valid.reduce((b,s)=>parseFloat(s.kg)>(parseFloat(b.kg)||0)?s:b,valid[0]);
-    return{maxKg:parseFloat(best.kg)||0,bestReps:parseInt(best.reps),date:dk};
+function _progressionContext(ex,dk){
+  const cm=String(logData[dk]?.planDay||'').match(/^c(\d+)$/);
+  const entry=cm&&customPlan?.[Number(cm[1])];
+  if(ex.planTarget)return ex.planTarget;
+  if(!entry?.programKey||entry.programArchived||ex.fromPlan!==true)return null;
+  const unit=getProgramUnit(entry.programKey);
+  const source=unit?.ex?.find(e=>e.name===ex.name);
+  const target=source&&getProgramTarget(unit,source,getProgramWeek(dk));
+  if(!target)return null;
+  // Alte Logs behalten die bereits gespeicherte Satz-/Rep-/RIR-Vorgabe.
+  const scheme=String(ex.scheme||'');
+  const count=scheme.match(/^(\d+)\s*[×x]/);
+  const reps=scheme.match(/[×x]\s*(\d+(?:\s*[-–]\s*\d+)?)/);
+  const rir=scheme.match(/·\s*(.+?)\s+RIR/);
+  if(count)target.sets=Number(count[1]);
+  if(reps){const range=_programRange(reps[1]);target.repMin=range.min;target.repMax=range.max;}
+  if(rir){
+    const range=_programRange(rir[1]);
+    if(range){
+      target.rirMin=range.min;target.rirMax=range.max;target.lastRirMin=range.min;target.lastRirMax=range.max;
+      const last=rir[1].match(/letzter Satz\s*(optional\s*)?(\d+(?:\s*[-–]\s*\d+)?)/i);
+      if(last){const end=_programRange(last[2]);target.lastRirMin=last[1]?Math.min(range.min,end.min):end.min;target.lastRirMax=last[1]?Math.max(range.max,end.max):end.max;}
+    }
+  }
+  return target;
+}
+function _evaluateProgression(ex,target){
+  if(!target||![target.sets,target.repMin,target.repMax,target.rirMin,target.rirMax,target.lastRirMin,target.lastRirMax].every(Number.isFinite))
+    return{status:'unknown',message:'Keine vollständige Planvorgabe – keine automatische Steigerung.'};
+  const sets=(ex.sets||[]).filter(s=>s.warmup!==true);
+  if(sets.length!==target.sets)return{status:'incomplete',message:`${target.sets} Arbeitssätze vorgesehen – Satzzahl prüfen, keine automatische Steigerung.`};
+  const numeric=v=>v!==''&&v!==null&&v!==undefined&&Number.isFinite(Number(v));
+  if(sets.some(s=>!numeric(s.reps)||!Number.isInteger(Number(s.reps))||Number(s.reps)<=0||!numeric(s.rir)||Number(s.rir)<0||Number(s.rir)>5))
+    return{status:'incomplete',message:'Reps und RIR für alle Arbeitssätze eintragen; noch keine Steigerung.'};
+  if(sets.some((s,i)=>Number(s.rir)<(i===sets.length-1?target.lastRirMin:target.rirMin)))
+    return{status:'hold',message:'Näher am Versagen als geplant – zunächst das RIR-Ziel einhalten, keine zusätzliche Last.'};
+  if(sets.some(s=>Number(s.reps)<target.repMax))
+    return{status:'hold',message:`Last zunächst beibehalten; alle ${target.sets} Arbeitssätze bis ${target.repMax} Reps bei geplantem RIR aufbauen.`};
+  if(sets.some((s,i)=>Number(s.rir)>(i===sets.length-1?target.lastRirMax:target.rirMax)))
+    return{status:'review',message:'Rep-Ziel erreicht, RIR liegt außerhalb der Planvorgabe – Last und Technik prüfen.'};
+  if(!Number.isFinite(target.step)||target.step<=0)return{status:'unknown',message:'Rep- und RIR-Ziel erreicht; passenden Lastschritt festlegen.'};
+  if(sets.some(s=>!numeric(s.kg)||Number(s.kg)<0))return{status:'incomplete',message:'Rep- und RIR-Ziel erreicht; Lastangaben für eine konkrete Steigerung fehlen.'};
+  const kg=Number(sets[0].kg);
+  if(sets.some(s=>Number(s.kg)!==kg))return{status:'review',message:'Unterschiedliche Satzlasten – keine pauschale Laststeigerung.'};
+  const next=Math.round((kg+target.step)*100)/100;
+  const fmt=n=>n.toLocaleString('de-DE',{maximumFractionDigits:2});
+  return{status:'increase',nextKg:next,message:`Alle ${target.sets} Arbeitssätze am Rep-Ziel und im RIR-Bereich: bei gleicher Technik nächstes Mal ${fmt(next)} kg (+${fmt(target.step)} kg); Reps wieder im Bereich ${target.repMin}–${target.repMax} aufbauen.`};
+}
+function getLastSession(ex,dk,target){
+  for(const date of Object.keys(logData).filter(date=>date<dk).sort().reverse()){
+    const previous=(logData[date]?.exercises||[]).find(candidate=>{
+      if(candidate.name!==ex.name||(candidate.variant||'')!==(ex.variant||''))return false;
+      const context=_progressionContext(candidate,date);
+      return context&&context.unitKey===target.unitKey&&context.programInstanceId===target.programInstanceId&&context.exerciseKey===target.exerciseKey;
+    });
+    if(previous&&(previous.sets||[]).some(s=>s.warmup!==true&&(s.reps!==''&&s.reps!=null||s.kg!==''&&s.kg!=null)))
+      return{exercise:previous,target:_progressionContext(previous,date),date};
   }
   return null;
 }
-function getOverloadSuggestion(ex){
-  if(!ex.sets.every(s=>!s.kg&&!s.reps))return null;
-  const last=getLastSession(ex.name);if(!last)return null;
-  const m=(ex.scheme||'').match(/[×x].*?(\d+)\s*[-–]?\s*(\d+)?/);
-  const schemeMax=m?parseInt(m[2]||m[1]):null;
-  if(schemeMax&&last.bestReps>=schemeMax){
-    const nextKg=Math.round((last.maxKg+2.5)*2)/2;
-    return`↑ ${last.maxKg} kg × ${last.bestReps} erreicht → Ziel: <strong>${nextKg} kg</strong>`;
-  }
-  return`↑ Letztes Mal ${last.maxKg} kg × ${last.bestReps} → Ziel: <strong>× ${last.bestReps+1}</strong>`;
+function getOverloadSuggestion(ex,dk=getDateKey(logDateOffset)){
+  if((ex.sets||[]).some(s=>s.warmup!==true&&(s.kg!==''&&s.kg!=null||s.reps!==''&&s.reps!=null)))return null;
+  const target=_progressionContext(ex,dk);if(!target)return null;
+  const last=getLastSession(ex,dk,target);if(!last)return null;
+  const fields=['sets','repMin','repMax','rirMin','rirMax','lastRirMin','lastRirMax','step'];
+  if(fields.some(field=>last.target[field]!==target[field]))return 'Neue Phasenvorgabe – Last passend zu Satzzahl, Rep-Bereich und RIR wählen.';
+  return _evaluateProgression(last.exercise,last.target).message;
 }
 
 // ════════════════════════════════════════════
@@ -700,7 +735,7 @@ function getWeeklyVolume(secondary=false,period=_getVolumePeriod()){
     const d=logData[dk];if(!d)continue;
     const cm=typeof d.planDay==='string'?d.planDay.match(/^c(\d+)$/):null;
     const entry=cm&&Array.isArray(customPlan)?customPlan[Number(cm[1])]:null;
-    const unit=period.week&&entry?.programKey&&typeof programData!=='undefined'&&Array.isArray(programData?.units)
+    const unit=period.week&&!entry?.programArchived&&entry?.programKey&&typeof programData!=='undefined'&&Array.isArray(programData?.units)
       ?programData.units.find(u=>u&&u.key===entry.programKey):null;
     (d.exercises||[]).forEach(ex=>{
       const mg=ex.muscleGroup||getMuscleGroup(ex.name);
@@ -847,13 +882,9 @@ function renderLogFeedback(dk){
   if(newPRexes.length>0)msgs.push(`<strong>🏆 PR: ${newPRexes.map(e=>e.name).join(', ')}!</strong>`);
   if(totalVol>0)msgs.push(`Gesamtvolumen: <strong style="color:var(--accent);">${Math.round(totalVol).toLocaleString('de-DE')} kg</strong>.`);
   const sugg=d.exercises.map(ex=>{
-    const workSets=(ex.sets||[]).filter(isWorkSet);
-    const maxKg=Math.max(0,...workSets.map(s=>parseFloat(s.kg)||0));const maxReps=Math.max(0,...workSets.map(s=>parseInt(s.reps)||0));
-    if(!maxKg)return null;
-    if(maxReps>=10)return`<strong>${ex.name}:</strong> 10er-Marke ✓ → nächste Session +2,5 kg.`;
-    if(maxReps>=8)return`<strong>${ex.name}:</strong> Solide → gleiche Last, mehr Reps anstreben.`;
-    if(maxReps<=5)return`<strong>${ex.name}:</strong> Schwere Intensität → nächste Woche +1 Satz.`;
-    return null;
+    const target=_progressionContext(ex,dk);
+    if(!target)return null;
+    return`<strong>${ex.name}:</strong> ${_evaluateProgression(ex,target).message}`;
   }).filter(Boolean);
   if(sugg.length)msgs.push('<br><strong>Coach-Progression:</strong><br>'+sugg.join('<br>'));
   el.innerHTML=msgs.join(' ')||'Session gespeichert.';

@@ -14,7 +14,7 @@ function renderDashboard(){
 
   let trainLabel,trainSub;
   if(trainingMode==='advanced'&&customPlan){
-    trainLabel=customPlan[todayIdx]?customPlan[todayIdx].title:'Eigener Plan';
+    trainLabel=customPlan[todayIdx]?customPlan[todayIdx].title:'Dein Trainingsplan';
     trainSub='Dein eigener Trainingsplan';
   } else {
     const plan=weekPlanState||getWeekPlan(c.recovery);
@@ -41,11 +41,8 @@ function renderDashboard(){
 
   const d={c,dk,day,greeting,trainLabel,trainSub,rColor,goalKcal:c.goalKcal,eaten,burned,remain,eatenPct,prot,carbs,fat,hour,aiMsg};
 
-  // ── Mode render
-  _applyModeToggleUI();
-  if(globalUIMode==='basic') renderBasicHome(d);
-  else if(globalUIMode==='advanced') renderAdvancedHome(d);
-  else renderBeginnerHome(d);
+  // One consistent home screen; imported metrics determine available detail.
+  renderCompactHome(d);
 
   // ── Hidden compat elements (legacy JS reads these)
   const dxs={sleep:c.s.sleep+' / 10',hrv:c.s.hrv+' ms',rhr:c.s.rhr+' bpm',steps:c.s.steps.toLocaleString('de-DE'),stress:c.s.stress+' / 10'};

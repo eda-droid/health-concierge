@@ -27,7 +27,7 @@ function _buildDashData(){
 
   let trainLabel,trainSub;
   if(trainingMode==='advanced'&&customPlan){
-    trainLabel=customPlan[todayIdx]?customPlan[todayIdx].title:'Eigener Plan';
+    trainLabel=customPlan[todayIdx]?customPlan[todayIdx].title:'Dein Trainingsplan';
     trainSub='Dein eigener Trainingsplan';
   } else {
     const plan=weekPlanState||getWeekPlan(c.recovery);
@@ -78,11 +78,11 @@ function _kcalCardHtml(d,withMacros,withProteinRow){
     protRow=`<div style="margin-top:8px;font-size:12px;color:var(--text2);">Protein: <strong style="color:var(--info);">${pr.eaten}g</strong> / ${pr.target}g${check}</div>`;
   }
   return`<div class="card home-kcal-card">
-    <div class="card-label-mono">🥗 ERNÄHRUNG HEUTE</div>
+    <div class="card-label-mono">Deine Ernährung</div>
     <div class="home-kcal-3">
       <div><div class="home-kcal-val" id="k-goal" style="color:var(--accent);">${goalKcal.toLocaleString('de-DE')}</div><div class="home-kcal-lbl">Ziel</div></div>
       <div><div class="home-kcal-val" id="k-eaten">${eaten.toLocaleString('de-DE')}</div><div class="home-kcal-lbl">Gegessen</div></div>
-      <div><div class="home-kcal-val" id="k-remain" style="color:${remain<0?'var(--danger)':'var(--info)'};">${remain.toLocaleString('de-DE')}</div><div class="home-kcal-lbl">Verbleibend</div></div>
+      <div><div class="home-kcal-val" id="k-remain" style="color:${remain<0?'var(--danger)':'var(--info)'};">${remain.toLocaleString('de-DE')}</div><div class="home-kcal-lbl">Noch verfügbar</div></div>
     </div>
     <div class="kcal-bar" id="kcal-bar">${_kcalBarHtml(eatenPct,eaten,goalKcal)}</div>
     ${protRow}
@@ -429,11 +429,11 @@ function _advKcalCardHtml(d){
   const carbP=goalKcal?Math.round(carbs*4/goalKcal*100):39;
   const fatP=goalKcal?Math.round(fat*9/goalKcal*100):28;
   return`<div class="card home-kcal-card">
-    <div class="card-label-mono">🥗 ERNÄHRUNG HEUTE</div>
+    <div class="card-label-mono">Deine Ernährung</div>
     <div class="home-kcal-3">
       <div><div class="home-kcal-val" id="k-goal" style="color:var(--accent);">${goalKcal.toLocaleString('de-DE')}</div><div class="home-kcal-lbl">Ziel</div></div>
       <div><div class="home-kcal-val" id="k-eaten">${eaten.toLocaleString('de-DE')}</div><div class="home-kcal-lbl">Gegessen</div></div>
-      <div><div class="home-kcal-val" id="k-remain" style="color:${remain<0?'var(--danger)':'var(--info)'};">${remain.toLocaleString('de-DE')}</div><div class="home-kcal-lbl">Verbleibend</div></div>
+      <div><div class="home-kcal-val" id="k-remain" style="color:${remain<0?'var(--danger)':'var(--info)'};">${remain.toLocaleString('de-DE')}</div><div class="home-kcal-lbl">Noch verfügbar</div></div>
     </div>
     <div class="kcal-bar" id="kcal-bar">${_kcalBarHtml(eatenPct,eaten,goalKcal)}</div>
     <div style="margin-top:14px;display:flex;flex-direction:column;gap:10px;">
@@ -608,3 +608,62 @@ window.setUIMode        =setUIMode;
 window.heroLogAction    =heroLogAction;
 window.saveBasicSleep   =saveBasicSleep;
 window.saveBasicActivity=saveBasicActivity;
+
+// A single compact dashboard. Display imported measurements, never slider
+// defaults, as Watch readings. Import date is not a live connection indicator.
+function _compactText(value){
+  return String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function _compactWatchHtml(){
+  const values=lastHealthImportDate===getTodayKey()?lastHealthImportValues:null;
+  const finite=v=>v!==null&&v!==undefined&&v!==''&&typeof v!=='boolean'&&Number.isFinite(Number(v))&&Number(v)>=0;
+  const format=v=>Number(v).toLocaleString('de-DE',{maximumFractionDigits:1});
+  const stages=values?.sleepStages;
+  const sleep=finite(stages?.total)&&Number(stages.total)>0?Number(stages.total)/60:values?.sleepH;
+  const metrics=values?[
+    ['Schritte',values.steps,''],['Schlaf',sleep,'h'],['HRV',values.hrv,'ms'],
+    ['Ruhepuls',values.rhr,'bpm'],['Aktive Energie',values.burned,'kcal']
+  ].filter(([,value])=>finite(value)):[];
+  if(!metrics.length)return`<div class="watch-invite"><span>Watch-Auswertung nach dem Import</span><button class="btn-ghost" onclick="document.getElementById('health-file').click()">Importieren</button></div>`;
+  const row=([label,value,unit])=>`<div class="watch-data-row"><span>${label}</span><strong>${format(value)} ${unit}</strong></div>`;
+  const stageRows=stages?[['Tiefschlaf',stages.deep,'min'],['REM',stages.rem,'min'],['Leichtschlaf',stages.light,'min']].filter(([,value])=>finite(value)):[];
+  return`<section class="card watch-overview" aria-label="Aktivität heute">
+    <div class="card-header"><div class="card-label">Aktivität heute</div><span class="watch-date">Zuletzt synchronisiert</span></div>
+    <div class="watch-metrics">${metrics.slice(0,2).map(([label,value,unit])=>`<div class="watch-metric"><span>${label}</span><strong>${format(value)}<small>${unit}</small></strong></div>`).join('')}</div>
+    <details class="compact-disclosure watch-detail" id="watch-detail"><summary>Details anzeigen</summary>
+      ${metrics.slice(2).map(row).join('')}${stageRows.length?'<div class="section-note">Schlafphasen</div>'+stageRows.map(row).join(''):''}
+      <p class="section-note">Werte aus dem letzten Import. Fehlende Messwerte werden nicht ergänzt.</p>
+    </details>
+  </section>`;
+}
+function _compactManualCheckinHtml(today){
+  const imported=lastHealthImportDate===getTodayKey()?lastHealthImportValues:null;
+  const hours=today.sleepHours!=null&&Number.isFinite(Number(today.sleepHours))?Number(today.sleepHours):'';
+  const sleep=imported?.sleepH==null?`<label class="section-note" for="home-sleep-hours" style="display:block;">Schlafdauer in Stunden</label><input id="home-sleep-hours" type="number" min="3" max="12" step="0.5" placeholder="7,5" value="${hours}" onchange="saveBasicSleep(this.value)" style="width:100%;padding:8px;background:var(--surface);border:1px solid var(--border);border-radius:9px;color:var(--text);">`:'';
+  const activity=imported?.steps==null?`<p class="section-note">Bewegung · eigene Einschätzung</p><div class="checkin-stars">${[['Wenig','sedentary',4000],['Normal','light',8000],['Viel','active',14000]].map(([label,level,steps])=>`<button aria-pressed="${today.activityLevel===level}" onclick="saveBasicActivity('${level}',${steps})">${label}</button>`).join('')}</div>`:'';
+  return sleep+activity;
+}
+function renderCompactHome(d){
+  const el=document.getElementById('home-render');if(!el)return;
+  const openIds=[...el.querySelectorAll('details[open][id]')].map(n=>n.id);
+  const today=getDay(getTodayKey());
+  el.innerHTML=`
+    <section class="hero-card">
+      <div class="hero-greet">${_compactText(d.greeting)}</div>
+      <div class="hero-session-row"><span class="hero-title" id="dash-training">${_compactText(d.trainLabel)}</span><button class="hero-log-btn" onclick="heroLogAction()">Training starten</button></div>
+      <div class="hero-sub" id="dash-training-sub">${_compactText(d.trainSub)}</div>
+    </section>
+    ${_compactWatchHtml()}
+    ${_kcalCardHtml(d,true,true)}
+    ${_waterCardHtml()}
+    <details class="card compact-disclosure" id="home-checkin"><summary>Mein Tagesgefühl</summary>
+      <p class="section-note">Wie fühlst du dich? 1 = niedrig, 5 = sehr gut.</p>
+      <div class="checkin-stars">${[1,2,3,4,5].map(n=>`<button aria-label="Tagesgefühl ${n} von 5" aria-pressed="${today.mood===n}" onclick="saveMood(${n})">${n}</button>`).join('')}</div>
+      ${_compactManualCheckinHtml(today)}
+    </details>
+    ${_weeklySlot()}
+  `;
+  openIds.forEach(id=>{const node=document.getElementById(id);if(node)node.open=true;});
+  renderWater();
+  if(typeof renderWeeklyReview==='function')renderWeeklyReview();
+}

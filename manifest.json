@@ -2,7 +2,7 @@
   "name": "Vitale Health Coach",
   "short_name": "Vitale",
   "description": "KI Muskelaufbau & Apple Watch Coach",
-  "start_url": "./HealthConcierge_v2.html",
+  "start_url": "./",
   "scope": "./",
   "id": "./HealthConcierge_v2.html",
   "display": "standalone",

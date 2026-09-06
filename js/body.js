@@ -484,7 +484,7 @@ function renderBodyHero(){
     <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;">
       <div style="flex:1;">
         <div style="font-size:11px;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px;">Hüfte — Hauptmetrik</div>
-        <div style="font-size:42px;font-weight:700;font-family:'DM Mono',monospace;letter-spacing:-0.03em;line-height:1;color:var(--text);">
+        <div style="font-size:28px;font-weight:600;font-family:'DM Mono',monospace;letter-spacing:-0.03em;line-height:1;color:var(--text);">
           ${hipNow||'—'}<span style="font-size:18px;font-weight:400;color:var(--muted);margin-left:4px;">cm</span>
         </div>
         ${hipDiff!==null?`<div style="font-size:13px;color:${diffColor};margin-top:6px;font-family:'DM Mono',monospace;">${diffStr}</div>`:''}

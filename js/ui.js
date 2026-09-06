@@ -6,7 +6,7 @@ function switchTab(id,el){
   // Exit any open training edit view when leaving the training tab
   if(id!=='training'&&typeof _resetTrainingEdit==='function')_resetTrainingEdit();
   document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
-  document.querySelectorAll('.bottom-tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.bottom-tab').forEach(t=>t.classList.toggle('active',(t.getAttribute('onclick')||'').includes("'"+id+"'")));
   document.getElementById(id).classList.add('active');
   el.classList.add('active');
   if(id==='training'){renderLog();renderWeekTab();}
@@ -19,6 +19,7 @@ function switchTab(id,el){
     if(_sarrow){_sarrow.style.transform=_sb==='1'?'rotate(90deg)':'';}
   }
   if(id==='home')renderDashboard();
+  window.scrollTo({top:0,behavior:'instant'});
   if(id==='nutrition')renderNutrition();
   if(id==='settings'){renderDeloadStatus();_applyThemeUI();}
 }
@@ -63,7 +64,7 @@ function updateWatchPill(){
   const txt=document.getElementById('watch-pill-text'),pulse=document.getElementById('watch-pill-pulse');
   if(!txt)return;
   const hasImport=lastHealthImportDate===getTodayKey();
-  txt.textContent=hasImport?'⌚ Watch ✓':'⌚ Kein Import';
+  txt.textContent=hasImport?'Zuletzt synchronisiert':'Kein Import';
   txt.style.color=hasImport?'var(--accent)':'var(--muted)';
   if(pulse)pulse.style.display=hasImport?'block':'none';
 }

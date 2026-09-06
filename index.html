@@ -2,17 +2,15 @@
 <html lang="de">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Vitale — Smart Training Log</title>
 <meta name="description" content="Vitale — Recovery-gesteuertes Trainings-Log mit Apple-Watch-Integration">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/style.css">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Vitale">
 <meta name="theme-color" content="#00E5A0">
+<link rel="manifest" href="manifest.json">
 <link rel="icon" type="image/png" href="assets/logo.png">
 <link rel="apple-touch-icon" href="assets/logo.png">
 </head>
@@ -22,10 +20,10 @@
 <!-- HEADER -->
 <header>
   <div class="logo">
-    <img src="assets/logo.png" alt="Vitale" width="40" height="40" style="border-radius:10px;object-fit:contain;flex-shrink:0;">
+    <img src="assets/logo.png" alt="Vitale" width="28" height="28" style="border-radius:8px;object-fit:contain;flex-shrink:0;">
     <div style="display:flex;align-items:center;gap:10px;">
       <div class="logo-name">Vi<span>tale</span></div>
-      <div class="status-pill" id="watch-pill"><div class="pulse" id="watch-pill-pulse"></div><span id="watch-pill-text">⌚ Kein Import</span></div>
+
     </div>
   </div>
   <button class="header-settings-btn" onclick="switchTab('settings',this)" aria-label="Einstellungen"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg></button>
@@ -74,7 +72,7 @@
     <div class="card-label" style="margin-bottom:12px;">Trainingsplan-Modus</div>
     <div class="mode-selector">
       <button class="mode-btn active" id="mode-beginner" onclick="setTrainingMode('beginner')">🌱 Einsteiger<br><span style="font-weight:400;font-size:10px;color:var(--muted);">Auto-Vorschlagsplan</span></button>
-      <button class="mode-btn" id="mode-advanced" onclick="setTrainingMode('advanced')">⚡ Fortgeschritten<br><span style="font-weight:400;font-size:10px;color:var(--muted);">Eigener Plan</span></button>
+      <button class="mode-btn" id="mode-advanced" onclick="setTrainingMode('advanced')">⚡ Fortgeschritten<br><span style="font-weight:400;font-size:10px;color:var(--muted);">Dein Trainingsplan</span></button>
     </div>
     <p id="mode-desc" style="font-size:12px;color:var(--muted);line-height:1.6;">Im Einsteiger-Modus erstellt Vitale automatisch einen Push/Pull/Legs-Plan basierend auf deiner Recovery.</p>
   </div>
@@ -154,7 +152,7 @@
     <div class="grid3" style="margin-bottom:14px;">
       <div class="metric"><div class="metric-label">Tagesziel</div><div class="metric-value" id="n-goal" style="font-size:19px;color:var(--accent);">2480</div><div class="metric-unit" id="n-goal-label">kcal Bulk</div></div>
       <div class="metric"><div class="metric-label">Gegessen</div><div class="metric-value" id="n-eaten" style="font-size:19px;">0</div><div class="metric-unit">kcal</div></div>
-      <div class="metric"><div class="metric-label">Verbleibend</div><div class="metric-value" id="n-remain" style="font-size:19px;color:var(--info);">2480</div><div class="metric-unit">kcal</div></div>
+      <div class="metric"><div class="metric-label">Noch verfügbar</div><div class="metric-value" id="n-remain" style="font-size:19px;color:var(--info);">2480</div><div class="metric-unit">kcal</div></div>
     </div>
 
     <!-- Makro-Schnelleingabe -->
@@ -289,48 +287,7 @@
       </div>
     </div>
 
-    <div class="card"><div class="card-label" style="margin-bottom:12px;">Grundumsatz (Mifflin-St. Jeor)</div><div id="rmr-breakdown"></div></div>
-
-    <div class="card">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
-        <div class="card-label" style="margin-bottom:0;">Tagesstatus — Apple Watch</div>
-        <span id="lock-hint" class="locked-hint" style="display:none;">🔒 Importiert</span>
-      </div>
-      <div class="slider-row">
-        <div class="slider-header"><span class="slider-label">🌙 Schlafqualität</span><span class="slider-val" id="sleep-val">7/10</span></div>
-        <input type="range" min="1" max="10" value="7" id="sleep" oninput="updateAll()">
-      </div>
-      <div class="slider-row">
-        <div class="slider-header"><span class="slider-label">💓 HRV-Score</span><span class="slider-val" id="hrv-val">55 ms</span></div>
-        <input type="range" min="20" max="200" value="55" id="hrv" oninput="updateAll()">
-      </div>
-      <div class="slider-row">
-        <div class="slider-header"><span class="slider-label">❤️ Ruhepuls</span><span class="slider-val" id="rhr-val">58 bpm</span></div>
-        <input type="range" min="40" max="90" value="58" id="rhr" oninput="updateAll()">
-      </div>
-      <div class="slider-row">
-        <div class="slider-header"><span class="slider-label">👟 Schritte heute</span><span class="slider-val" id="steps-val">8.000</span></div>
-        <input type="range" min="0" max="25000" step="500" value="8000" id="steps" oninput="updateAll()">
-      </div>
-      <div class="slider-row" style="margin-bottom:0;">
-        <div class="slider-header"><span class="slider-label">⚡ Stresslevel</span><span class="slider-val" id="stress-val">4/10</span></div>
-        <input type="range" min="1" max="10" value="4" id="stress" oninput="updateAll()">
-      </div>
-      <button id="unlock-btn" class="btn-dashed" style="display:none;margin-top:14px;" onclick="unlockSliders()">🔓 Regler entsperren</button>
-    </div>
-
-    <div class="card" id="sleep-analysis-card">
-      <div class="card-label" style="margin-bottom:12px;">Schlafanalyse (Apple Watch)</div>
-      <div id="sleep-analysis-content">
-        <p style="font-size:12px;color:var(--muted);line-height:1.65;">Schlafphasen werden aus dem Apple-Watch-Import gelesen. Importiere deine Health-Daten um Tiefschlaf, REM und Schlafdauer zu sehen.</p>
-        <div style="margin-top:12px;display:grid;grid-template-columns:repeat(3,1fr);gap:8px;" id="sleep-phase-metrics"></div>
-        <div id="sleep-quality-bar" style="margin-top:10px;display:none;">
-          <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:4px;"><span>Schlafqualität</span><span id="sleep-quality-pct"></span></div>
-          <div style="height:8px;background:var(--border);border-radius:4px;overflow:hidden;"><div id="sleep-quality-fill" style="height:100%;border-radius:4px;transition:width .5s;"></div></div>
-          <div id="sleep-advice" style="margin-top:8px;font-size:12px;line-height:1.6;color:var(--text2);"></div>
-        </div>
-      </div>
-    </div>
+    <details class="card compact-disclosure"><summary>Grundumsatz · Berechnung</summary><div id="rmr-breakdown" style="margin-top:10px;"></div></details>
 
     <div class="card">
       <div class="card-label" style="margin-bottom:4px;">Einstellungen</div>
@@ -445,40 +402,73 @@
 <div id="settings" class="panel">
 
   <!-- App-Modus -->
-  <div class="card">
-    <div class="card-label" style="margin-bottom:12px;">App-Modus</div>
-    <p style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.6;">Wähle die Detailtiefe der Home-Ansicht. Basic ist minimalistisch, Einsteiger zeigt Guides, Advanced alle Metriken.</p>
-    <div class="ui-mode-toggle" style="width:100%;">
-      <button class="mode-btn" data-mode="basic" onclick="setUIMode('basic')" style="flex:1;">🚶 Basic</button>
-      <button class="mode-btn active" data-mode="beginner" onclick="setUIMode('beginner')" style="flex:1;">🌱 Einsteiger</button>
-      <button class="mode-btn" data-mode="advanced" onclick="setUIMode('advanced')" style="flex:1;">⚡ Advanced</button>
-    </div>
-  </div>
-
   <!-- Erscheinungsbild -->
   <div class="card">
     <div class="card-label" style="margin-bottom:12px;">Erscheinungsbild</div>
     <div class="mode-selector" style="margin-bottom:0;">
-      <button class="mode-btn active" id="theme-dark" onclick="setTheme('dark')" style="flex:1;">🌙 Dark</button>
-      <button class="mode-btn" id="theme-light" onclick="setTheme('light')" style="flex:1;">☀️ Light</button>
+      <button class="mode-btn active" id="theme-dark" onclick="setTheme('dark')" style="flex:1;">Dunkel</button>
+      <button class="mode-btn" id="theme-light" onclick="setTheme('light')" style="flex:1;">Hell</button>
     </div>
   </div>
 
+<details class="card compact-disclosure" id="manual-health-settings"><summary>Tageswerte manuell bearbeiten</summary><p class="section-note">Eigene Angaben für die Berechnung. Importierte Werte werden separat angezeigt.</p>    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+        <div class="card-label" style="margin-bottom:0;">Manuelle Tageswerte</div>
+        <span id="lock-hint" class="locked-hint" style="display:none;">🔒 Importiert</span>
+      </div>
+      <div class="slider-row">
+        <div class="slider-header"><span class="slider-label">🌙 Schlafqualität</span><span class="slider-val" id="sleep-val">7/10</span></div>
+        <input type="range" min="1" max="10" value="7" id="sleep" oninput="updateAll()">
+      </div>
+      <div class="slider-row">
+        <div class="slider-header"><span class="slider-label">💓 HRV-Score</span><span class="slider-val" id="hrv-val">55 ms</span></div>
+        <input type="range" min="20" max="200" value="55" id="hrv" oninput="updateAll()">
+      </div>
+      <div class="slider-row">
+        <div class="slider-header"><span class="slider-label">❤️ Ruhepuls</span><span class="slider-val" id="rhr-val">58 bpm</span></div>
+        <input type="range" min="40" max="90" value="58" id="rhr" oninput="updateAll()">
+      </div>
+      <div class="slider-row">
+        <div class="slider-header"><span class="slider-label">👟 Schritte heute</span><span class="slider-val" id="steps-val">8.000</span></div>
+        <input type="range" min="0" max="25000" step="500" value="8000" id="steps" oninput="updateAll()">
+      </div>
+      <div class="slider-row" style="margin-bottom:0;">
+        <div class="slider-header"><span class="slider-label">⚡ Stresslevel</span><span class="slider-val" id="stress-val">4/10</span></div>
+        <input type="range" min="1" max="10" value="4" id="stress" oninput="updateAll()">
+      </div>
+      <button id="unlock-btn" class="btn-dashed" style="display:none;margin-top:14px;" onclick="unlockSliders()">🔓 Regler entsperren</button>
+    </div>
+
+    <div class="card" id="sleep-analysis-card" hidden>
+      <div class="card-label" style="margin-bottom:12px;">Schlafanalyse (Apple Watch)</div>
+      <div id="sleep-analysis-content">
+        <p style="font-size:12px;color:var(--muted);line-height:1.65;">Schlafphasen werden aus dem Apple-Watch-Import gelesen. Importiere deine Health-Daten um Tiefschlaf, REM und Schlafdauer zu sehen.</p>
+        <div style="margin-top:12px;display:grid;grid-template-columns:repeat(3,1fr);gap:8px;" id="sleep-phase-metrics"></div>
+        <div id="sleep-quality-bar" style="margin-top:10px;display:none;">
+          <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:4px;"><span>Schlafqualität</span><span id="sleep-quality-pct"></span></div>
+          <div style="height:8px;background:var(--border);border-radius:4px;overflow:hidden;"><div id="sleep-quality-fill" style="height:100%;border-radius:4px;transition:width .5s;"></div></div>
+          <div id="sleep-advice" style="margin-top:8px;font-size:12px;line-height:1.6;color:var(--text2);"></div>
+        </div>
+      </div>
+    </div>
+
+</details>
+
   <!-- Apple Watch Import -->
   <div class="card">
-    <div class="card-label" style="margin-bottom:8px;">Apple Watch Daten importieren</div>
-    <p style="font-size:12px;color:var(--muted);line-height:1.65;margin-bottom:14px;">Exportiere mit <strong style="color:var(--text);">"Health Auto Export"</strong> (App Store) deine Daten als CSV/JSON. HRV, Ruhepuls, Schlaf, Schritte und <strong style="color:var(--text);">Aktive Kalorien</strong> werden übernommen und sperren die Regler für heute.</p>
+    <div class="card-header"><div class="card-label">Aktivität heute</div><div class="status-pill" id="watch-pill"><div class="pulse" id="watch-pill-pulse"></div><span id="watch-pill-text">⌚ Kein Import</span></div></div>
+    <p class="section-note">Health-Datei importieren. Die Auswertung findest du unter Heute.</p>
     <div style="margin-bottom:14px;">
-      <div style="font-size:10px;color:var(--muted);font-family:'DM Mono',monospace;letter-spacing:.07em;text-transform:uppercase;margin-bottom:8px;">Energie-Einheit in deiner Export-Datei</div>
+      <div style="font-size:10px;color:var(--muted);font-family:'DM Mono',monospace;letter-spacing:.07em;text-transform:uppercase;margin-bottom:8px;">Energie-Einheit der Datei</div>
       <div class="mode-selector" style="margin-bottom:0;">
         <button class="mode-btn active" id="unit-kcal" onclick="setHealthEnergyUnit('kcal')">kcal<span style="display:block;font-size:10px;font-weight:400;color:var(--muted);">direkt übernehmen</span></button>
         <button class="mode-btn" id="unit-kj" onclick="setHealthEnergyUnit('kj')">kJ<span style="display:block;font-size:10px;font-weight:400;color:var(--muted);">÷ 4,18 → kcal</span></button>
       </div>
     </div>
     <div class="import-zone" onclick="document.getElementById('health-file').click()">
-      <div style="margin-bottom:10px;font-size:36px;">⌚</div>
+      
       <div style="font-size:13px;font-weight:600;">Health-Datei hochladen</div>
-      <div style="font-size:11px;color:var(--muted);margin-top:4px;">CSV oder JSON · HRV, Ruhepuls, Schlaf, Schritte, Aktive Kalorien</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:4px;">CSV oder JSON aus Health Auto Export</div>
     </div>
     <input type="file" id="health-file" accept=".csv,.json" style="display:none;" onchange="importHealthFile(event)">
     <div id="import-status" style="margin-top:10px;font-size:12px;"></div>
@@ -489,6 +479,8 @@
   <div class="card">
     <div class="card-label" style="margin-bottom:12px;">Trainingsprogramm</div>
     <div id="program-info" style="margin-bottom:12px;"></div>
+    <button class="btn-primary" id="program-update-btn" style="display:none;width:100%;margin-bottom:8px;" onclick="document.getElementById('program-update-file').click()">Bestehenden Plan aktualisieren</button>
+    <input type="file" id="program-update-file" accept=".json" style="display:none;" onchange="importProgramFile(event,'update')">
     <button class="btn-ghost" id="program-load-btn" style="width:100%;" onclick="document.getElementById('program-file').click()">Programm laden</button>
     <input type="file" id="program-file" accept=".json" style="display:none;" onchange="importProgramFile(event)">
     <div id="program-remove-wrap"></div>
@@ -502,11 +494,18 @@
     <button class="btn-ghost" style="margin-top:12px;width:100%;" onclick="resetDeloadCycle()">🔄 Neuen Trainingszyklus starten</button>
   </div>
 
+  <div class="card">
+    <div class="card-label">App-Version</div>
+    <p style="font-size:12px;color:var(--muted);margin:10px 0;">Updates direkt hier laden. Deine gespeicherten Daten und dein Home-Bildschirm-Symbol bleiben erhalten.</p>
+    <p id="app-update-status" role="status" style="font-size:12px;margin-bottom:12px;">Updates werden eingerichtet …</p>
+    <button id="app-update-check" class="btn-ghost" style="width:100%;" disabled>Nach Updates suchen</button>
+  </div>
+
   <!-- Datensicherung -->
   <div class="card">
     <div class="card-label">Datensicherung</div>
     <p style="font-size:12px;color:var(--muted);margin-bottom:12px;">
-      Vor dem Löschen des Lesezeichens immer exportieren.
+      Regelmäßig eine Sicherung speichern. Für App-Updates musst du das Home-Bildschirm-Symbol nicht löschen.
       Alle Logs, Messungen und PRs werden gesichert.
     </p>
     <button onclick="exportAllData()" class="btn-primary" style="width:100%;margin-bottom:8px;">↓ Daten exportieren</button>
@@ -518,6 +517,15 @@
   </div>
 
 </div><!-- /settings -->
+
+<aside id="app-update-banner" hidden aria-label="App-Update" style="position:fixed;z-index:10000;left:12px;right:12px;top:max(12px,env(safe-area-inset-top));max-width:480px;margin:0 auto;padding:16px;border:1px solid var(--accent);border-radius:14px;background:var(--card);color:var(--text);box-shadow:0 8px 32px #0006;">
+  <strong>Neue Version verfügbar</strong>
+  <p id="app-update-message" style="font-size:13px;margin:8px 0 12px;">Speichere offene Formulare vor dem Aktualisieren. Deine gespeicherten Daten bleiben erhalten.</p>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;">
+    <button id="app-update-apply" class="btn-primary">Jetzt aktualisieren</button>
+    <button id="app-update-later" class="btn-ghost">Später</button>
+  </div>
+</aside>
 
 <!-- BOTTOM NAV -->
 <nav class="bottom-nav">
@@ -609,19 +617,6 @@
 <script src="js/renpho-import.js"></script>
 <script src="js/program.js"></script>
 <script src="js/init.js" defer></script>
-<script>
-  const base = window.location.pathname.replace(/\/[^/]*$/, '/');
-
-  const ml = document.createElement('link');
-  ml.rel = 'manifest';
-  ml.href = base + 'manifest.json';
-  document.head.appendChild(ml);
-
-  if('serviceWorker' in navigator)
-    window.addEventListener('load', () =>
-      navigator.serviceWorker.register(
-        base + 'sw.js', { scope: base }
-      ));
-</script>
+<script src="js/app-updates.js" defer></script>
 </body>
 </html>
