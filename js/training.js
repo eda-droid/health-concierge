@@ -443,9 +443,41 @@ function getLastLoggedValue(name){
   return null;
 }
 
+const restDurations = [0, 60, 90, 120, 180, 240, 300];
+let restTick;
+function restPreference(ex){
+  const raw = localStorage.getItem('vitale_rest_seconds:' + ex.name);
+  return raw !== null && restDurations.includes(Number(raw)) ? Number(raw) : 120;
+}
+function drawRestTimer(){
+  clearTimeout(restTick);
+  const panel = document.getElementById('set-rest-panel');
+  if(!panel) return;
+  const end = Number(sessionStorage.getItem('vitale_rest_end'));
+  panel.hidden = !end;
+  if(!end) return;
+  const seconds = Math.max(0, Math.ceil((end - Date.now()) / 1000));
+  panel.querySelector('output').textContent = seconds
+    ? 'Satzpause · ' + Math.floor(seconds / 60) + ':' + String(seconds % 60).padStart(2, '0')
+    : 'Pause beendet';
+  if(seconds) restTick = setTimeout(drawRestTimer, 250);
+}
+function changeRestTime(extend){
+  if(extend){
+    const end = Number(sessionStorage.getItem('vitale_rest_end'));
+    sessionStorage.setItem('vitale_rest_end', Math.max(Date.now(), end) + 30000);
+  }else{
+    sessionStorage.removeItem('vitale_rest_end');
+  }
+  drawRestTimer();
+}
 function renderExercises(dk){
   const el=document.getElementById('exercise-log-list');if(!el)return;
   el.innerHTML='';
+  if(dk===getDateKey(0)){
+    el.innerHTML = '<div class="log-exercise-card" id="set-rest-panel" hidden><output aria-live="off"></output> <button class="btn-dashed" onclick="changeRestTime(true)">+30 Sek.</button> <button class="btn-dashed" onclick="changeRestTime(false)">Beenden</button></div>';
+    drawRestTimer();
+  }
   (logData[dk]?.exercises||[]).forEach((ex,ei)=>{
     const vKey=ex.variant?ex.name+'·'+ex.variant:ex.name;
     const pr=prData[vKey]||prData[ex.name]||0;
@@ -576,6 +608,7 @@ function renderExercises(dk){
       <div style="display:grid;grid-template-columns:${LOG_GRID_COLS};gap:5px;margin:10px 0 6px;">
         <span class="log-col-label">#</span><span class="log-col-label">kg</span><span class="log-col-label">Reps</span><span class="log-col-label">RIR</span><span class="log-col-label">Volumen</span><span></span>
       </div>
+      ${dk===getDateKey(0)?`<label>Satzpause <select onchange="localStorage.setItem('vitale_rest_seconds:' + logData['${dk}'].exercises[${ei}].name, this.value)">${restDurations.map(n=>`<option value="${n}" ${restPreference(ex)===n?'selected':''}>${n?n+' Sek.':'Aus'}</option>`).join('')}</select></label>`:''}
       ${ghostHtml}
       <div>${ex.sets.map((set,si)=>renderSetRow(dk,ei,si,set)).join('')}</div>
       <button class="btn-dashed" onclick="addSet('${dk}',${ei})" style="margin-top:6px;padding:7px;">+ Satz</button>`;
@@ -604,11 +637,19 @@ function bindSetInputs(){
 }
 function commitSet(dk,ei,si,field,v){
   if(!logData[dk]||!logData[dk].exercises[ei])return;
-  logData[dk].exercises[ei].sets[si][field]=v;
+  const set = logData[dk].exercises[ei].sets[si];
+  const startRest = dk===getDateKey(0) && field==='reps' && !(Number(set.reps)>0) && Number(v)>0 && !set.warmup;
+  set[field]=v;
   const ex=logData[dk].exercises[ei];const maxKg=Math.max(0,...ex.sets.map(s=>parseFloat(s.kg)||0));
   const vKey=ex.variant?ex.name+'·'+ex.variant:ex.name;
   if(maxKg>0&&maxKg>(prData[vKey]||0))prData[vKey]=maxKg;
-  saveLog();renderExercises(dk);bindSetInputs();renderWeekSummary();renderLogFeedback(dk);renderStrengthHistory();renderWeekFeedback();renderVolumeTracker();
+  saveLog();
+  if(startRest){
+    const seconds = restPreference(ex);
+    if(seconds) sessionStorage.setItem('vitale_rest_end', Date.now() + seconds * 1000);
+    else sessionStorage.removeItem('vitale_rest_end');
+  }
+  renderExercises(dk);bindSetInputs();renderWeekSummary();renderLogFeedback(dk);renderStrengthHistory();renderWeekFeedback();renderVolumeTracker();
 }
 function toggleWarmup(dk,ei,si){
   const set=logData[dk]?.exercises?.[ei]?.sets?.[si];
