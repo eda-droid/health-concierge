@@ -1,5 +1,5 @@
 // The Vercel build replaces this value with a hash of the complete app release.
-const RELEASE = 'local';
+const RELEASE = 'rest-timer-1';
 const CACHE_PREFIX = 'vitale-app-';
 const CACHE = CACHE_PREFIX + RELEASE;
 const ASSETS = [
